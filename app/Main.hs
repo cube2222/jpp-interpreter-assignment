@@ -8,7 +8,7 @@ import Language.Par
 import Language.Abs
 import Language.ErrM
 
-data Value = Integer Integer | Bool Bool | Fun Ident Expr deriving (Show)
+data Value = Integer Integer | Bool Bool | Fun Ident Expr Env deriving (Show)
 
 add (Integer v1) (Integer v2) = Integer (v1 + v2)
 sub (Integer v1) (Integer v2) = Integer (v1 - v2)
@@ -35,8 +35,8 @@ withVariable ident val env = env { variables = Map.insert ident val (variables e
 getVariable :: Ident -> R Value
 getVariable ident = (Map.!) <$> (asks variables) <*> pure ident
 
-getFunction :: Ident -> R (Ident, Expr)
-getFunction fName = (\(Fun argName expr) -> (argName, expr)) <$> getVariable fName
+getFunction :: Ident -> R (Ident, Expr, Env)
+getFunction fName = (\(Fun argName expr env) -> (argName, expr, env)) <$> getVariable fName
 
 interpretExpr :: Expr -> R Value
 interpretExpr x = case x of
@@ -64,16 +64,23 @@ interpretExpr x = case x of
   EFunCall ident argExpr -> -- To jest źle, uzywa aktualnego enva zamiast call-site
     let 
       funcParams = do
-        (argName, bodyExpr) <- getFunction ident
+        (argName, bodyExpr, env) <- getFunction ident
         argVal <- (interpretExpr argExpr)
-        return (argName, argVal, bodyExpr)
-      callFunc (argName, argVal, bodyExpr) = local (withVariable argName argVal) (interpretExpr bodyExpr)
+        return (argName, argVal, bodyExpr, env)
+      callFunc (argName, argVal, bodyExpr, env) = local (\ _ -> withVariable argName argVal env) (interpretExpr bodyExpr)
     in funcParams >>= callFunc
 
 interpretStmt :: Stmt -> R (Env -> Env)
 interpretStmt stmt = case stmt of
   SDeclVar ident expr -> (withVariable ident) <$> (interpretExpr expr)
-  SDeclFun fName argName expr -> pure $ (withVariable fName) $ (Fun argName expr)
+  SDeclFun fName argName expr -> 
+    let
+      makeFun env = 
+        let
+          recEnv = withVariable fName recFun env
+          recFun = Fun argName expr recEnv
+        in recFun
+    in (withVariable fName) <$> (makeFun <$> ask)
 
 main = do
     interact calc
