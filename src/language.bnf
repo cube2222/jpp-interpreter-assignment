@@ -1,7 +1,15 @@
 EAdd. Expr  ::= Expr  "+" Expr1 ;
 ESub. Expr  ::= Expr  "-" Expr1 ;
 EMul. Expr1 ::= Expr1 "*" Expr2 ;
-EDiv. Expr1 ::= Expr1 "//" Expr2 ;
+EDiv. Expr1 ::= Expr1 "/" Expr2 ;
+
+EEq. Expr ::= Expr "==" Expr1 ;
+ENotEq. Expr ::= Expr "!=" Expr1 ;
+ELt. Expr ::= Expr "<" Expr1 ;
+EGt. Expr ::= Expr ">" Expr1 ;
+ELtEq. Expr ::= Expr "<=" Expr1 ;
+EGtEq. Expr ::= Expr ">=" Expr1 ;
+
 EInt. Expr2 ::= Integer ;
 
 EOr. Expr  ::= Expr  "or" Expr1 ;
@@ -12,6 +20,8 @@ EFalse. Expr2 ::= "false" ;
 
 EVar. Expr2 ::= Ident ;
 EFunCall. Expr2 ::= Ident "(" Expr ")" ;
+
+EIfte. Expr ::= "if" Expr "then" Expr "else" Expr ;
 
 ESemicolon. Expr ::= Stmt ";" Expr ;
 SDeclVar. Stmt ::= "val" Ident "=" Expr ;
