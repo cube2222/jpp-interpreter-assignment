@@ -26,12 +26,13 @@ Integer literals //Integer// are nonempty sequences of digits.
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in language are the following:
-  | ``and`` | ``false`` | ``not`` | ``or``
-  | ``true`` | ``val`` |  |
+  | ``and`` | ``false`` | ``fun`` | ``not``
+  | ``or`` | ``true`` | ``val`` |
 
 The symbols used in language are the following:
   | + | - | * | //
-  | ; | = | ( | )
+  | ( | ) | ; | =
+  | { | } |  |
 
 ===Comments===
 There are no single-line comments in the grammar.There are no multiple-line comments in the grammar.
@@ -56,7 +57,9 @@ All other symbols are terminals.
   |  |  **|**  | ``true``
   |  |  **|**  | ``false``
   |  |  **|**  | //Ident//
+  |  |  **|**  | //Ident// ``(`` //Expr// ``)``
   |  |  **|**  | ``(`` //Expr// ``)``
   | //Stmt// | -> | ``val`` //Ident// ``=`` //Expr//
+  |  |  **|**  | ``fun`` //Ident// ``(`` //Ident// ``)`` ``{`` //Expr// ``}``
 
 

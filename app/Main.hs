@@ -8,7 +8,7 @@ import Language.Par
 import Language.Abs
 import Language.ErrM
 
-data Value = Integer Integer | Bool Bool deriving (Show)
+data Value = Integer Integer | Bool Bool | Fun Ident Expr deriving (Show)
 
 add (Integer v1) (Integer v2) = Integer (v1 + v2)
 sub (Integer v1) (Integer v2) = Integer (v1 - v2)
@@ -25,6 +25,9 @@ withVariable ident val env = env { variables = Map.insert ident val (variables e
 getVariable :: Ident -> R Value
 getVariable ident = (Map.!) <$> (asks variables) <*> pure ident
 
+getFunction :: Ident -> R (Ident, Expr)
+getFunction fName = (\(Fun argName expr) -> (argName, expr)) <$> getVariable fName
+
 interpretExpr :: Expr -> R Value
 interpretExpr x = case x of
   EAdd expr0 expr1  -> liftM2 add (interpretExpr expr0) (interpretExpr expr1)
@@ -36,10 +39,21 @@ interpretExpr x = case x of
   EFalse -> pure . Bool $ False
   EVar ident -> getVariable ident
   ESemicolon stmt expr -> (interpretStmt stmt) >>= ((flip local) (interpretExpr expr))
+  EFunCall ident argExpr -> 
+    let 
+      funcParams = do
+        (argName, bodyExpr) <- getFunction ident
+        argVal <- (interpretExpr argExpr)
+        return (argName, argVal, bodyExpr)
+      callFunc (argName, argVal, bodyExpr) = local (withVariable argName argVal) (interpretExpr bodyExpr)
+    in funcParams >>= callFunc
+
+    -- (local (withVariable argName argVal) (interpretExpr bodyExpr))
 
 interpretStmt :: Stmt -> R (Env -> Env)
 interpretStmt stmt = case stmt of
   SDeclVar ident expr -> (withVariable ident) <$> (interpretExpr expr)
+  SDeclFun fName argName expr -> pure $ (withVariable fName) $ (Fun argName expr)
 
 main = do
     interact calc

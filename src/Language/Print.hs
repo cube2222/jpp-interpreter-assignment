@@ -104,9 +104,11 @@ instance Print Language.Abs.Expr where
     Language.Abs.ETrue -> prPrec i 2 (concatD [doc (showString "true")])
     Language.Abs.EFalse -> prPrec i 2 (concatD [doc (showString "false")])
     Language.Abs.EVar id -> prPrec i 2 (concatD [prt 0 id])
+    Language.Abs.EFunCall id expr -> prPrec i 2 (concatD [prt 0 id, doc (showString "("), prt 0 expr, doc (showString ")")])
     Language.Abs.ESemicolon stmt expr -> prPrec i 0 (concatD [prt 0 stmt, doc (showString ";"), prt 0 expr])
 
 instance Print Language.Abs.Stmt where
   prt i e = case e of
     Language.Abs.SDeclVar id expr -> prPrec i 0 (concatD [doc (showString "val"), prt 0 id, doc (showString "="), prt 0 expr])
+    Language.Abs.SDeclFun id1 id2 expr -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 id1, doc (showString "("), prt 0 id2, doc (showString ")"), doc (showString "{"), prt 0 expr, doc (showString "}")])
 

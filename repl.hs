@@ -1,6 +1,1 @@
-let Ok e = pExpr (myLexer "(2+2)*5") in e
-startEnv
-calc "(2+2)*5"
-pExpr (myLexer "val x = 6; val y = 2; 2")
-calc "val x = 6; val y = 2; 2"
-calc "val x = 6; val y = 2; x * y"
+calc "val x = 6; val y = 3; fun test(x) { val x = x + 4; x + 2 }; y + test(test(x))"

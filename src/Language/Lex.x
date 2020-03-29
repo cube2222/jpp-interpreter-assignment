@@ -21,7 +21,7 @@ $i = [$l $d _ ']     -- identifier character
 $u = [. \n]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \+ | \- | \* | \/ \/ | \; | \= | \( | \)
+   \+ | \- | \* | \/ \/ | \( | \) | \; | \= | \{ | \}
 
 :-
 
@@ -102,7 +102,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "=" 8 (b "+" 4 (b ")" 2 (b "(" 1 N N) (b "*" 3 N N)) (b "//" 6 (b "-" 5 N N) (b ";" 7 N N))) (b "or" 12 (b "false" 10 (b "and" 9 N N) (b "not" 11 N N)) (b "val" 14 (b "true" 13 N N) N))
+resWords = b "and" 9 (b "-" 5 (b "*" 3 (b ")" 2 (b "(" 1 N N) N) (b "+" 4 N N)) (b ";" 7 (b "//" 6 N N) (b "=" 8 N N))) (b "true" 14 (b "not" 12 (b "fun" 11 (b "false" 10 N N) N) (b "or" 13 N N)) (b "{" 16 (b "val" 15 N N) (b "}" 17 N N)))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

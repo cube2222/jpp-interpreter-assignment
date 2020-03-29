@@ -25,8 +25,10 @@ transExpr x = case x of
   ETrue -> failure x
   EFalse -> failure x
   EVar ident -> failure x
+  EFunCall ident expr -> failure x
   ESemicolon stmt expr -> failure x
 transStmt :: Stmt -> Result
 transStmt x = case x of
   SDeclVar ident expr -> failure x
+  SDeclFun ident1 ident2 expr -> failure x
 

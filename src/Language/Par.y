@@ -26,10 +26,13 @@ import Language.ErrM
   '=' { PT _ (TS _ 8) }
   'and' { PT _ (TS _ 9) }
   'false' { PT _ (TS _ 10) }
-  'not' { PT _ (TS _ 11) }
-  'or' { PT _ (TS _ 12) }
-  'true' { PT _ (TS _ 13) }
-  'val' { PT _ (TS _ 14) }
+  'fun' { PT _ (TS _ 11) }
+  'not' { PT _ (TS _ 12) }
+  'or' { PT _ (TS _ 13) }
+  'true' { PT _ (TS _ 14) }
+  'val' { PT _ (TS _ 15) }
+  '{' { PT _ (TS _ 16) }
+  '}' { PT _ (TS _ 17) }
   L_integ  { PT _ (TI $$) }
   L_ident  { PT _ (TV $$) }
 
@@ -58,9 +61,11 @@ Expr2 : Integer { Language.Abs.EInt $1 }
       | 'true' { Language.Abs.ETrue }
       | 'false' { Language.Abs.EFalse }
       | Ident { Language.Abs.EVar $1 }
+      | Ident '(' Expr ')' { Language.Abs.EFunCall $1 $3 }
       | '(' Expr ')' { $2 }
 Stmt :: { Stmt }
 Stmt : 'val' Ident '=' Expr { Language.Abs.SDeclVar $2 $4 }
+     | 'fun' Ident '(' Ident ')' '{' Expr '}' { Language.Abs.SDeclFun $2 $4 $7 }
 {
 
 returnM :: a -> Err a

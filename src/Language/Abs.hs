@@ -18,9 +18,10 @@ data Expr
     | ETrue
     | EFalse
     | EVar Ident
+    | EFunCall Ident Expr
     | ESemicolon Stmt Expr
   deriving (Eq, Ord, Show, Read)
 
-data Stmt = SDeclVar Ident Expr
+data Stmt = SDeclVar Ident Expr | SDeclFun Ident Ident Expr
   deriving (Eq, Ord, Show, Read)
 
