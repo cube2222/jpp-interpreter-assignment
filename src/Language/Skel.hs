@@ -18,6 +18,12 @@ transExpr x = case x of
   ESub expr1 expr2 -> failure x
   EMul expr1 expr2 -> failure x
   EDiv expr1 expr2 -> failure x
+  EEq expr1 expr2 -> failure x
+  ENotEq expr1 expr2 -> failure x
+  ELt expr1 expr2 -> failure x
+  EGt expr1 expr2 -> failure x
+  ELtEq expr1 expr2 -> failure x
+  EGtEq expr1 expr2 -> failure x
   EInt integer -> failure x
   EOr expr1 expr2 -> failure x
   EAnd expr1 expr2 -> failure x
@@ -26,6 +32,7 @@ transExpr x = case x of
   EFalse -> failure x
   EVar ident -> failure x
   EFunCall ident expr -> failure x
+  EIfte expr1 expr2 expr3 -> failure x
   ESemicolon stmt expr -> failure x
 transStmt :: Stmt -> Result
 transStmt x = case x of

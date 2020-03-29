@@ -1,7 +1,11 @@
 val x = 6;
 val y = 3;
 fun test(x) { 
+  fun test2(x) {
+    val x = x + 3;
+    x
+  };
   val x = x + 4;
-  x + 2
+  test2(x + 2)
 };
 y + test(test(x))

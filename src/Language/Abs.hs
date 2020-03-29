@@ -11,6 +11,12 @@ data Expr
     | ESub Expr Expr
     | EMul Expr Expr
     | EDiv Expr Expr
+    | EEq Expr Expr
+    | ENotEq Expr Expr
+    | ELt Expr Expr
+    | EGt Expr Expr
+    | ELtEq Expr Expr
+    | EGtEq Expr Expr
     | EInt Integer
     | EOr Expr Expr
     | EAnd Expr Expr
@@ -19,6 +25,7 @@ data Expr
     | EFalse
     | EVar Ident
     | EFunCall Ident Expr
+    | EIfte Expr Expr Expr
     | ESemicolon Stmt Expr
   deriving (Eq, Ord, Show, Read)
 

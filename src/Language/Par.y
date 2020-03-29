@@ -16,23 +16,32 @@ import Language.ErrM
 %monad { Err } { thenM } { returnM }
 %tokentype {Token}
 %token
-  '(' { PT _ (TS _ 1) }
-  ')' { PT _ (TS _ 2) }
-  '*' { PT _ (TS _ 3) }
-  '+' { PT _ (TS _ 4) }
-  '-' { PT _ (TS _ 5) }
-  '//' { PT _ (TS _ 6) }
-  ';' { PT _ (TS _ 7) }
-  '=' { PT _ (TS _ 8) }
-  'and' { PT _ (TS _ 9) }
-  'false' { PT _ (TS _ 10) }
-  'fun' { PT _ (TS _ 11) }
-  'not' { PT _ (TS _ 12) }
-  'or' { PT _ (TS _ 13) }
-  'true' { PT _ (TS _ 14) }
-  'val' { PT _ (TS _ 15) }
-  '{' { PT _ (TS _ 16) }
-  '}' { PT _ (TS _ 17) }
+  '!=' { PT _ (TS _ 1) }
+  '(' { PT _ (TS _ 2) }
+  ')' { PT _ (TS _ 3) }
+  '*' { PT _ (TS _ 4) }
+  '+' { PT _ (TS _ 5) }
+  '-' { PT _ (TS _ 6) }
+  '/' { PT _ (TS _ 7) }
+  ';' { PT _ (TS _ 8) }
+  '<' { PT _ (TS _ 9) }
+  '<=' { PT _ (TS _ 10) }
+  '=' { PT _ (TS _ 11) }
+  '==' { PT _ (TS _ 12) }
+  '>' { PT _ (TS _ 13) }
+  '>=' { PT _ (TS _ 14) }
+  'and' { PT _ (TS _ 15) }
+  'else' { PT _ (TS _ 16) }
+  'false' { PT _ (TS _ 17) }
+  'fun' { PT _ (TS _ 18) }
+  'if' { PT _ (TS _ 19) }
+  'not' { PT _ (TS _ 20) }
+  'or' { PT _ (TS _ 21) }
+  'then' { PT _ (TS _ 22) }
+  'true' { PT _ (TS _ 23) }
+  'val' { PT _ (TS _ 24) }
+  '{' { PT _ (TS _ 25) }
+  '}' { PT _ (TS _ 26) }
   L_integ  { PT _ (TI $$) }
   L_ident  { PT _ (TV $$) }
 
@@ -47,13 +56,20 @@ Ident    : L_ident  { Ident $1 }
 Expr :: { Expr }
 Expr : Expr '+' Expr1 { Language.Abs.EAdd $1 $3 }
      | Expr '-' Expr1 { Language.Abs.ESub $1 $3 }
+     | Expr '==' Expr1 { Language.Abs.EEq $1 $3 }
+     | Expr '!=' Expr1 { Language.Abs.ENotEq $1 $3 }
+     | Expr '<' Expr1 { Language.Abs.ELt $1 $3 }
+     | Expr '>' Expr1 { Language.Abs.EGt $1 $3 }
+     | Expr '<=' Expr1 { Language.Abs.ELtEq $1 $3 }
+     | Expr '>=' Expr1 { Language.Abs.EGtEq $1 $3 }
      | Expr 'or' Expr1 { Language.Abs.EOr $1 $3 }
      | Expr 'and' Expr1 { Language.Abs.EAnd $1 $3 }
+     | 'if' Expr 'then' Expr 'else' Expr { Language.Abs.EIfte $2 $4 $6 }
      | Stmt ';' Expr { Language.Abs.ESemicolon $1 $3 }
      | Expr1 { $1 }
 Expr1 :: { Expr }
 Expr1 : Expr1 '*' Expr2 { Language.Abs.EMul $1 $3 }
-      | Expr1 '//' Expr2 { Language.Abs.EDiv $1 $3 }
+      | Expr1 '/' Expr2 { Language.Abs.EDiv $1 $3 }
       | 'not' Expr2 { Language.Abs.ENot $2 }
       | Expr2 { $1 }
 Expr2 :: { Expr }

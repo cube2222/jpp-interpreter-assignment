@@ -96,7 +96,13 @@ instance Print Language.Abs.Expr where
     Language.Abs.EAdd expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 1 expr2])
     Language.Abs.ESub expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "-"), prt 1 expr2])
     Language.Abs.EMul expr1 expr2 -> prPrec i 1 (concatD [prt 1 expr1, doc (showString "*"), prt 2 expr2])
-    Language.Abs.EDiv expr1 expr2 -> prPrec i 1 (concatD [prt 1 expr1, doc (showString "//"), prt 2 expr2])
+    Language.Abs.EDiv expr1 expr2 -> prPrec i 1 (concatD [prt 1 expr1, doc (showString "/"), prt 2 expr2])
+    Language.Abs.EEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "=="), prt 1 expr2])
+    Language.Abs.ENotEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "!="), prt 1 expr2])
+    Language.Abs.ELt expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "<"), prt 1 expr2])
+    Language.Abs.EGt expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString ">"), prt 1 expr2])
+    Language.Abs.ELtEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "<="), prt 1 expr2])
+    Language.Abs.EGtEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString ">="), prt 1 expr2])
     Language.Abs.EInt n -> prPrec i 2 (concatD [prt 0 n])
     Language.Abs.EOr expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "or"), prt 1 expr2])
     Language.Abs.EAnd expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "and"), prt 1 expr2])
@@ -105,6 +111,7 @@ instance Print Language.Abs.Expr where
     Language.Abs.EFalse -> prPrec i 2 (concatD [doc (showString "false")])
     Language.Abs.EVar id -> prPrec i 2 (concatD [prt 0 id])
     Language.Abs.EFunCall id expr -> prPrec i 2 (concatD [prt 0 id, doc (showString "("), prt 0 expr, doc (showString ")")])
+    Language.Abs.EIfte expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     Language.Abs.ESemicolon stmt expr -> prPrec i 0 (concatD [prt 0 stmt, doc (showString ";"), prt 0 expr])
 
 instance Print Language.Abs.Stmt where
