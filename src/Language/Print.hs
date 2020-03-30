@@ -90,6 +90,9 @@ instance Print Double where
 
 instance Print Language.Abs.Ident where
   prt _ (Language.Abs.Ident i) = doc (showString i)
+  prtList _ [] = concatD []
+  prtList _ [x] = concatD [prt 0 x]
+  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
 instance Print Language.Abs.Expr where
   prt i e = case e of
@@ -109,13 +112,23 @@ instance Print Language.Abs.Expr where
     Language.Abs.ENot expr -> prPrec i 1 (concatD [doc (showString "not"), prt 2 expr])
     Language.Abs.ETrue -> prPrec i 2 (concatD [doc (showString "true")])
     Language.Abs.EFalse -> prPrec i 2 (concatD [doc (showString "false")])
+    Language.Abs.ELambda id expr -> prPrec i 0 (concatD [prt 0 id, doc (showString "->"), prt 1 expr])
     Language.Abs.EVar id -> prPrec i 2 (concatD [prt 0 id])
-    Language.Abs.EFunCall id expr -> prPrec i 2 (concatD [prt 0 id, doc (showString "("), prt 0 expr, doc (showString ")")])
+    Language.Abs.EFunCall expr exprs -> prPrec i 2 (concatD [prt 0 expr, doc (showString "("), prt 0 exprs, doc (showString ")")])
     Language.Abs.EIfte expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     Language.Abs.ESemicolon stmt expr -> prPrec i 0 (concatD [prt 0 stmt, doc (showString ";"), prt 0 expr])
+  prtList _ [] = concatD []
+  prtList _ [x] = concatD [prt 0 x]
+  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
+
+instance Print [Language.Abs.Expr] where
+  prt = prtList
 
 instance Print Language.Abs.Stmt where
   prt i e = case e of
     Language.Abs.SDeclVar id expr -> prPrec i 0 (concatD [doc (showString "val"), prt 0 id, doc (showString "="), prt 0 expr])
-    Language.Abs.SDeclFun id1 id2 expr -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 id1, doc (showString "("), prt 0 id2, doc (showString ")"), doc (showString "{"), prt 0 expr, doc (showString "}")])
+    Language.Abs.SDeclFun id ids expr -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 id, doc (showString "("), prt 0 ids, doc (showString ")"), doc (showString "{"), prt 0 expr, doc (showString "}")])
+
+instance Print [Language.Abs.Ident] where
+  prt = prtList
 

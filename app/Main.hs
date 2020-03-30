@@ -8,7 +8,7 @@ import Language.Par
 import Language.Abs
 import Language.ErrM
 
-data Value = Integer Integer | Bool Bool | Fun Ident Expr Env deriving (Show)
+data Value = Integer Integer | Bool Bool | Fun Expr Env deriving (Show)
 
 add (Integer v1) (Integer v2) = Integer (v1 + v2)
 sub (Integer v1) (Integer v2) = Integer (v1 - v2)
@@ -35,8 +35,8 @@ withVariable ident val env = env { variables = Map.insert ident val (variables e
 getVariable :: Ident -> R Value
 getVariable ident = (Map.!) <$> (asks variables) <*> pure ident
 
-getFunction :: Ident -> R (Ident, Expr, Env)
-getFunction fName = (\(Fun argName expr env) -> (argName, expr, env)) <$> getVariable fName
+getFunction :: Value -> (Ident, Expr, Env)
+getFunction (Fun (ELambda argName bodyExpr) env) = (argName, bodyExpr, env)
 
 interpretExpr :: Expr -> R Value
 interpretExpr x = case x of
@@ -61,24 +61,29 @@ interpretExpr x = case x of
     in
       branch >>= interpretExpr
   ESemicolon stmt expr -> (interpretStmt stmt) >>= ((flip local) (interpretExpr expr))
-  EFunCall ident argExpr -> -- To jest źle, uzywa aktualnego enva zamiast call-site
+  EFunCall funExpr argExprs ->
     let 
-      funcParams = do
-        (argName, bodyExpr, env) <- getFunction ident
-        argVal <- (interpretExpr argExpr)
-        return (argName, argVal, bodyExpr, env)
-      callFunc (argName, argVal, bodyExpr, env) = local (\ _ -> withVariable argName argVal env) (interpretExpr bodyExpr)
-    in funcParams >>= callFunc
+      handleSingleLevel argExpr (Fun (ELambda argName bodyExpr) env) = 
+        let 
+          funcParams = do
+            --(argName, bodyExpr, env) <- getFunction <$> interpretExpr funExpr
+            argVal <- (interpretExpr argExpr)
+            return (argName, argVal, bodyExpr, env)
+          callFunc (argName, argVal, bodyExpr, env) = local (\ _ -> withVariable argName argVal env) (interpretExpr bodyExpr)
+        in funcParams >>= callFunc
+    in foldl (\f -> (\expr -> (f >>= handleSingleLevel expr))) (interpretExpr funExpr) argExprs
+  ELambda argName expr -> Fun (ELambda argName expr) <$> ask
 
 interpretStmt :: Stmt -> R (Env -> Env)
 interpretStmt stmt = case stmt of
   SDeclVar ident expr -> (withVariable ident) <$> (interpretExpr expr)
-  SDeclFun fName argName expr -> 
+  SDeclFun fName argNames expr -> 
     let
       makeFun env = 
         let
           recEnv = withVariable fName recFun env
-          recFun = Fun argName expr recEnv
+          recFun = Fun (foldr (\argName -> (\expr -> (ELambda argName expr))) expr argNames) recEnv
+          --recFun = Fun argName exprs recEnv
         in recFun
     in (withVariable fName) <$> (makeFun <$> ask)
 

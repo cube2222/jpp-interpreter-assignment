@@ -23,12 +23,13 @@ data Expr
     | ENot Expr
     | ETrue
     | EFalse
+    | ELambda Ident Expr
     | EVar Ident
-    | EFunCall Ident Expr
+    | EFunCall Expr [Expr]
     | EIfte Expr Expr Expr
     | ESemicolon Stmt Expr
   deriving (Eq, Ord, Show, Read)
 
-data Stmt = SDeclVar Ident Expr | SDeclFun Ident Ident Expr
+data Stmt = SDeclVar Ident Expr | SDeclFun Ident [Ident] Expr
   deriving (Eq, Ord, Show, Read)
 

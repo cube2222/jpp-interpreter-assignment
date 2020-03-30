@@ -11,7 +11,9 @@ import Language.ErrM
 %name pExpr Expr
 %name pExpr1 Expr1
 %name pExpr2 Expr2
+%name pListExpr ListExpr
 %name pStmt Stmt
+%name pListIdent ListIdent
 -- no lexer declaration
 %monad { Err } { thenM } { returnM }
 %tokentype {Token}
@@ -21,27 +23,29 @@ import Language.ErrM
   ')' { PT _ (TS _ 3) }
   '*' { PT _ (TS _ 4) }
   '+' { PT _ (TS _ 5) }
-  '-' { PT _ (TS _ 6) }
-  '/' { PT _ (TS _ 7) }
-  ';' { PT _ (TS _ 8) }
-  '<' { PT _ (TS _ 9) }
-  '<=' { PT _ (TS _ 10) }
-  '=' { PT _ (TS _ 11) }
-  '==' { PT _ (TS _ 12) }
-  '>' { PT _ (TS _ 13) }
-  '>=' { PT _ (TS _ 14) }
-  'and' { PT _ (TS _ 15) }
-  'else' { PT _ (TS _ 16) }
-  'false' { PT _ (TS _ 17) }
-  'fun' { PT _ (TS _ 18) }
-  'if' { PT _ (TS _ 19) }
-  'not' { PT _ (TS _ 20) }
-  'or' { PT _ (TS _ 21) }
-  'then' { PT _ (TS _ 22) }
-  'true' { PT _ (TS _ 23) }
-  'val' { PT _ (TS _ 24) }
-  '{' { PT _ (TS _ 25) }
-  '}' { PT _ (TS _ 26) }
+  ',' { PT _ (TS _ 6) }
+  '-' { PT _ (TS _ 7) }
+  '->' { PT _ (TS _ 8) }
+  '/' { PT _ (TS _ 9) }
+  ';' { PT _ (TS _ 10) }
+  '<' { PT _ (TS _ 11) }
+  '<=' { PT _ (TS _ 12) }
+  '=' { PT _ (TS _ 13) }
+  '==' { PT _ (TS _ 14) }
+  '>' { PT _ (TS _ 15) }
+  '>=' { PT _ (TS _ 16) }
+  'and' { PT _ (TS _ 17) }
+  'else' { PT _ (TS _ 18) }
+  'false' { PT _ (TS _ 19) }
+  'fun' { PT _ (TS _ 20) }
+  'if' { PT _ (TS _ 21) }
+  'not' { PT _ (TS _ 22) }
+  'or' { PT _ (TS _ 23) }
+  'then' { PT _ (TS _ 24) }
+  'true' { PT _ (TS _ 25) }
+  'val' { PT _ (TS _ 26) }
+  '{' { PT _ (TS _ 27) }
+  '}' { PT _ (TS _ 28) }
   L_integ  { PT _ (TI $$) }
   L_ident  { PT _ (TV $$) }
 
@@ -64,6 +68,7 @@ Expr : Expr '+' Expr1 { Language.Abs.EAdd $1 $3 }
      | Expr '>=' Expr1 { Language.Abs.EGtEq $1 $3 }
      | Expr 'or' Expr1 { Language.Abs.EOr $1 $3 }
      | Expr 'and' Expr1 { Language.Abs.EAnd $1 $3 }
+     | Ident '->' Expr1 { Language.Abs.ELambda $1 $3 }
      | 'if' Expr 'then' Expr 'else' Expr { Language.Abs.EIfte $2 $4 $6 }
      | Stmt ';' Expr { Language.Abs.ESemicolon $1 $3 }
      | Expr1 { $1 }
@@ -77,11 +82,19 @@ Expr2 : Integer { Language.Abs.EInt $1 }
       | 'true' { Language.Abs.ETrue }
       | 'false' { Language.Abs.EFalse }
       | Ident { Language.Abs.EVar $1 }
-      | Ident '(' Expr ')' { Language.Abs.EFunCall $1 $3 }
+      | Expr '(' ListExpr ')' { Language.Abs.EFunCall $1 $3 }
       | '(' Expr ')' { $2 }
+ListExpr :: { [Expr] }
+ListExpr : {- empty -} { [] }
+         | Expr { (:[]) $1 }
+         | Expr ',' ListExpr { (:) $1 $3 }
 Stmt :: { Stmt }
 Stmt : 'val' Ident '=' Expr { Language.Abs.SDeclVar $2 $4 }
-     | 'fun' Ident '(' Ident ')' '{' Expr '}' { Language.Abs.SDeclFun $2 $4 $7 }
+     | 'fun' Ident '(' ListIdent ')' '{' Expr '}' { Language.Abs.SDeclFun $2 $4 $7 }
+ListIdent :: { [Ident] }
+ListIdent : {- empty -} { [] }
+          | Ident { (:[]) $1 }
+          | Ident ',' ListIdent { (:) $1 $3 }
 {
 
 returnM :: a -> Err a

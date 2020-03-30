@@ -18,13 +18,17 @@ ENot. Expr1 ::= "not" Expr2 ;
 ETrue. Expr2 ::= "true" ;
 EFalse. Expr2 ::= "false" ;
 
+ELambda. Expr ::= Ident "->" Expr1;
+
 EVar. Expr2 ::= Ident ;
-EFunCall. Expr2 ::= Ident "(" Expr ")" ;
+EFunCall. Expr2 ::= Expr "(" [Expr] ")" ;
+separator Expr "," ;
 
 EIfte. Expr ::= "if" Expr "then" Expr "else" Expr ;
 
 ESemicolon. Expr ::= Stmt ";" Expr ;
 SDeclVar. Stmt ::= "val" Ident "=" Expr ;
-SDeclFun. Stmt ::= "fun" Ident "(" Ident ")" "{" Expr "}" ;
+SDeclFun. Stmt ::= "fun" Ident "(" [Ident] ")" "{" Expr "}" ;
+separator Ident "," ;
 
 coercions Expr 2 ;
