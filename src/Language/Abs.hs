@@ -26,6 +26,7 @@ data Expr
     | ELambda Ident Expr
     | EVar Ident
     | EFunCall Expr [Expr]
+    | EList [Expr]
     | EIfte Expr Expr Expr
     | ESemicolon Stmt Expr
   deriving (Eq, Ord, Show, Read)

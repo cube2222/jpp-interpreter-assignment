@@ -115,6 +115,7 @@ instance Print Language.Abs.Expr where
     Language.Abs.ELambda id expr -> prPrec i 0 (concatD [prt 0 id, doc (showString "->"), prt 1 expr])
     Language.Abs.EVar id -> prPrec i 2 (concatD [prt 0 id])
     Language.Abs.EFunCall expr exprs -> prPrec i 2 (concatD [prt 0 expr, doc (showString "("), prt 0 exprs, doc (showString ")")])
+    Language.Abs.EList exprs -> prPrec i 0 (concatD [doc (showString "["), prt 0 exprs, doc (showString "]")])
     Language.Abs.EIfte expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     Language.Abs.ESemicolon stmt expr -> prPrec i 0 (concatD [prt 0 stmt, doc (showString ";"), prt 0 expr])
   prtList _ [] = concatD []

@@ -21,7 +21,7 @@ $i = [$l $d _ ']     -- identifier character
 $u = [. \n]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \+ | \- | \* | \/ | \= \= | \! \= | \< | \> | \< \= | \> \= | \- \> | \( | \) | \, | \; | \= | \{ | \}
+   \+ | \- | \* | \/ | \= \= | \! \= | \< | \> | \< \= | \> \= | \- \> | \( | \) | \, | \[ | \] | \; | \= | \{ | \}
 
 :-
 
@@ -102,7 +102,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b ">" 15 (b "->" 8 (b "*" 4 (b "(" 2 (b "!=" 1 N N) (b ")" 3 N N)) (b "," 6 (b "+" 5 N N) (b "-" 7 N N))) (b "<=" 12 (b ";" 10 (b "/" 9 N N) (b "<" 11 N N)) (b "==" 14 (b "=" 13 N N) N))) (b "not" 22 (b "false" 19 (b "and" 17 (b ">=" 16 N N) (b "else" 18 N N)) (b "if" 21 (b "fun" 20 N N) N)) (b "val" 26 (b "then" 24 (b "or" 23 N N) (b "true" 25 N N)) (b "}" 28 (b "{" 27 N N) N)))
+resWords = b ">=" 16 (b "->" 8 (b "*" 4 (b "(" 2 (b "!=" 1 N N) (b ")" 3 N N)) (b "," 6 (b "+" 5 N N) (b "-" 7 N N))) (b "<=" 12 (b ";" 10 (b "/" 9 N N) (b "<" 11 N N)) (b "==" 14 (b "=" 13 N N) (b ">" 15 N N)))) (b "not" 24 (b "else" 20 (b "]" 18 (b "[" 17 N N) (b "and" 19 N N)) (b "fun" 22 (b "false" 21 N N) (b "if" 23 N N))) (b "val" 28 (b "then" 26 (b "or" 25 N N) (b "true" 27 N N)) (b "}" 30 (b "{" 29 N N) N)))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

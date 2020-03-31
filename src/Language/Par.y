@@ -34,18 +34,20 @@ import Language.ErrM
   '==' { PT _ (TS _ 14) }
   '>' { PT _ (TS _ 15) }
   '>=' { PT _ (TS _ 16) }
-  'and' { PT _ (TS _ 17) }
-  'else' { PT _ (TS _ 18) }
-  'false' { PT _ (TS _ 19) }
-  'fun' { PT _ (TS _ 20) }
-  'if' { PT _ (TS _ 21) }
-  'not' { PT _ (TS _ 22) }
-  'or' { PT _ (TS _ 23) }
-  'then' { PT _ (TS _ 24) }
-  'true' { PT _ (TS _ 25) }
-  'val' { PT _ (TS _ 26) }
-  '{' { PT _ (TS _ 27) }
-  '}' { PT _ (TS _ 28) }
+  '[' { PT _ (TS _ 17) }
+  ']' { PT _ (TS _ 18) }
+  'and' { PT _ (TS _ 19) }
+  'else' { PT _ (TS _ 20) }
+  'false' { PT _ (TS _ 21) }
+  'fun' { PT _ (TS _ 22) }
+  'if' { PT _ (TS _ 23) }
+  'not' { PT _ (TS _ 24) }
+  'or' { PT _ (TS _ 25) }
+  'then' { PT _ (TS _ 26) }
+  'true' { PT _ (TS _ 27) }
+  'val' { PT _ (TS _ 28) }
+  '{' { PT _ (TS _ 29) }
+  '}' { PT _ (TS _ 30) }
   L_integ  { PT _ (TI $$) }
   L_ident  { PT _ (TV $$) }
 
@@ -69,6 +71,7 @@ Expr : Expr '+' Expr1 { Language.Abs.EAdd $1 $3 }
      | Expr 'or' Expr1 { Language.Abs.EOr $1 $3 }
      | Expr 'and' Expr1 { Language.Abs.EAnd $1 $3 }
      | Ident '->' Expr1 { Language.Abs.ELambda $1 $3 }
+     | '[' ListExpr ']' { Language.Abs.EList $2 }
      | 'if' Expr 'then' Expr 'else' Expr { Language.Abs.EIfte $2 $4 $6 }
      | Stmt ';' Expr { Language.Abs.ESemicolon $1 $3 }
      | Expr1 { $1 }

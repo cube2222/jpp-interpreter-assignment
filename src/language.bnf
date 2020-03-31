@@ -24,6 +24,8 @@ EVar. Expr2 ::= Ident ;
 EFunCall. Expr2 ::= Expr "(" [Expr] ")" ;
 separator Expr "," ;
 
+EList. Expr ::= "[" [Expr] "]" ;
+
 EIfte. Expr ::= "if" Expr "then" Expr "else" Expr ;
 
 ESemicolon. Expr ::= Stmt ";" Expr ;

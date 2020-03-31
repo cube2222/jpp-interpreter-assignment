@@ -8,7 +8,7 @@ import Language.Par
 import Language.Abs
 import Language.ErrM
 
-data Value = Integer Integer | Bool Bool | Fun Expr Env deriving (Show)
+data Value = Integer Integer | Bool Bool | List [Value] | Fun Expr Env deriving (Show)
 
 add (Integer v1) (Integer v2) = Integer (v1 + v2)
 sub (Integer v1) (Integer v2) = Integer (v1 - v2)
@@ -54,6 +54,7 @@ interpretExpr x = case x of
   ETrue -> pure . Bool $ True
   EFalse -> pure . Bool $ False
   EVar ident -> getVariable ident
+  EList exprs -> List <$> (foldr (\expr -> (\rList -> rList >>= (\list -> (\val -> val : list) <$> (interpretExpr expr)))) (pure []) exprs)
   EIfte predicateExpr thenExpr elseExpr ->
     let
       predicate = interpretExpr predicateExpr
@@ -66,7 +67,6 @@ interpretExpr x = case x of
       handleSingleLevel argExpr (Fun (ELambda argName bodyExpr) env) = 
         let 
           funcParams = do
-            --(argName, bodyExpr, env) <- getFunction <$> interpretExpr funExpr
             argVal <- (interpretExpr argExpr)
             return (argName, argVal, bodyExpr, env)
           callFunc (argName, argVal, bodyExpr, env) = local (\ _ -> withVariable argName argVal env) (interpretExpr bodyExpr)
@@ -83,7 +83,6 @@ interpretStmt stmt = case stmt of
         let
           recEnv = withVariable fName recFun env
           recFun = Fun (foldr (\argName -> (\expr -> (ELambda argName expr))) expr argNames) recEnv
-          --recFun = Fun argName exprs recEnv
         in recFun
     in (withVariable fName) <$> (makeFun <$> ask)
 

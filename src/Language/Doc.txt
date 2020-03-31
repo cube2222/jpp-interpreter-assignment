@@ -34,8 +34,8 @@ The symbols used in language are the following:
   | + | - | * | /
   | == | != | < | >
   | <= | >= | -> | (
-  | ) | , | ; | =
-  | { | } |  |
+  | ) | , | [ | ]
+  | ; | = | { | }
 
 ===Comments===
 There are no single-line comments in the grammar.There are no multiple-line comments in the grammar.
@@ -57,6 +57,7 @@ All other symbols are terminals.
   |  |  **|**  | //Expr// ``or`` //Expr1//
   |  |  **|**  | //Expr// ``and`` //Expr1//
   |  |  **|**  | //Ident// ``->`` //Expr1//
+  |  |  **|**  | ``[`` //[Expr]// ``]``
   |  |  **|**  | ``if`` //Expr// ``then`` //Expr// ``else`` //Expr//
   |  |  **|**  | //Stmt// ``;`` //Expr//
   |  |  **|**  | //Expr1//

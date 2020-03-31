@@ -33,6 +33,7 @@ transExpr x = case x of
   ELambda ident expr -> failure x
   EVar ident -> failure x
   EFunCall expr exprs -> failure x
+  EList exprs -> failure x
   EIfte expr1 expr2 expr3 -> failure x
   ESemicolon stmt expr -> failure x
 transStmt :: Stmt -> Result
