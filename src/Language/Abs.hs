@@ -27,10 +27,16 @@ data Expr
     | EVar Ident
     | EFunCall Expr [Expr]
     | EList [Expr]
+    | ECons Expr Expr
+    | ENil
     | EIfte Expr Expr Expr
     | ESemicolon Stmt Expr
+    | EMatch Expr [MatchClause]
   deriving (Eq, Ord, Show, Read)
 
 data Stmt = SDeclVar Ident Expr | SDeclFun Ident [Ident] Expr
+  deriving (Eq, Ord, Show, Read)
+
+data MatchClause = MMatchClause Expr Expr
   deriving (Eq, Ord, Show, Read)
 

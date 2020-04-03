@@ -116,8 +116,11 @@ instance Print Language.Abs.Expr where
     Language.Abs.EVar id -> prPrec i 2 (concatD [prt 0 id])
     Language.Abs.EFunCall expr exprs -> prPrec i 2 (concatD [prt 0 expr, doc (showString "("), prt 0 exprs, doc (showString ")")])
     Language.Abs.EList exprs -> prPrec i 0 (concatD [doc (showString "["), prt 0 exprs, doc (showString "]")])
+    Language.Abs.ECons expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString ":"), prt 0 expr2])
+    Language.Abs.ENil -> prPrec i 0 (concatD [doc (showString "nil")])
     Language.Abs.EIfte expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
     Language.Abs.ESemicolon stmt expr -> prPrec i 0 (concatD [prt 0 stmt, doc (showString ";"), prt 0 expr])
+    Language.Abs.EMatch expr matchclauses -> prPrec i 0 (concatD [doc (showString "match"), prt 1 expr, doc (showString "as"), prt 0 matchclauses])
   prtList _ [] = concatD []
   prtList _ [x] = concatD [prt 0 x]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
@@ -131,5 +134,14 @@ instance Print Language.Abs.Stmt where
     Language.Abs.SDeclFun id ids expr -> prPrec i 0 (concatD [doc (showString "fun"), prt 0 id, doc (showString "("), prt 0 ids, doc (showString ")"), doc (showString "{"), prt 0 expr, doc (showString "}")])
 
 instance Print [Language.Abs.Ident] where
+  prt = prtList
+
+instance Print Language.Abs.MatchClause where
+  prt i e = case e of
+    Language.Abs.MMatchClause expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "~>"), prt 0 expr2])
+  prtList _ [] = concatD []
+  prtList _ (x:xs) = concatD [prt 0 x, prt 0 xs]
+
+instance Print [Language.Abs.MatchClause] where
   prt = prtList
 

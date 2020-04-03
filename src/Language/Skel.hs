@@ -34,10 +34,16 @@ transExpr x = case x of
   EVar ident -> failure x
   EFunCall expr exprs -> failure x
   EList exprs -> failure x
+  ECons expr1 expr2 -> failure x
+  ENil -> failure x
   EIfte expr1 expr2 expr3 -> failure x
   ESemicolon stmt expr -> failure x
+  EMatch expr matchclauses -> failure x
 transStmt :: Stmt -> Result
 transStmt x = case x of
   SDeclVar ident expr -> failure x
   SDeclFun ident idents expr -> failure x
+transMatchClause :: MatchClause -> Result
+transMatchClause x = case x of
+  MMatchClause expr1 expr2 -> failure x
 

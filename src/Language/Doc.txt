@@ -26,16 +26,18 @@ Integer literals //Integer// are nonempty sequences of digits.
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in language are the following:
-  | ``and`` | ``else`` | ``false`` | ``fun``
-  | ``if`` | ``not`` | ``or`` | ``then``
-  | ``true`` | ``val`` |  |
+  | ``and`` | ``as`` | ``else`` | ``false``
+  | ``fun`` | ``if`` | ``match`` | ``nil``
+  | ``not`` | ``or`` | ``then`` | ``true``
+  | ``val`` |  |  |
 
 The symbols used in language are the following:
   | + | - | * | /
   | == | != | < | >
   | <= | >= | -> | (
   | ) | , | [ | ]
-  | ; | = | { | }
+  | : | ; | = | {
+  | } | ~> |  |
 
 ===Comments===
 There are no single-line comments in the grammar.There are no multiple-line comments in the grammar.
@@ -58,8 +60,11 @@ All other symbols are terminals.
   |  |  **|**  | //Expr// ``and`` //Expr1//
   |  |  **|**  | //Ident// ``->`` //Expr1//
   |  |  **|**  | ``[`` //[Expr]// ``]``
+  |  |  **|**  | //Expr// ``:`` //Expr//
+  |  |  **|**  | ``nil``
   |  |  **|**  | ``if`` //Expr// ``then`` //Expr// ``else`` //Expr//
   |  |  **|**  | //Stmt// ``;`` //Expr//
+  |  |  **|**  | ``match`` //Expr1// ``as`` //[MatchClause]//
   |  |  **|**  | //Expr1//
   | //Expr1// | -> | //Expr1// ``*`` //Expr2//
   |  |  **|**  | //Expr1// ``/`` //Expr2//
@@ -79,5 +84,8 @@ All other symbols are terminals.
   | //[Ident]// | -> | **eps**
   |  |  **|**  | //Ident//
   |  |  **|**  | //Ident// ``,`` //[Ident]//
+  | //MatchClause// | -> | //Expr// ``~>`` //Expr//
+  | //[MatchClause]// | -> | **eps**
+  |  |  **|**  | //MatchClause// //[MatchClause]//
 
 
