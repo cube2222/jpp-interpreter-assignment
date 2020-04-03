@@ -1,7 +1,10 @@
 module Main where
 
 import qualified Data.Map as Map
+import Data.Either
 import Control.Monad.Reader
+import Control.Monad.Except
+import Control.Monad.Identity
 
 import Language.Lex
 import Language.Par
@@ -26,13 +29,13 @@ ltEq (Integer v1) (Integer v2) = Bool (v1 <= v2)
 gtEq (Integer v1) (Integer v2) = Bool (v1 >= v2)
 
 data Env = Env { variables :: Map.Map Ident Value } deriving (Show)
-type R a = Reader Env a
+type IM = ReaderT Env (ExceptT String Identity)
 
 startEnv = Env { variables = Map.empty }
 withVariable :: Ident -> Value -> Env -> Env
 withVariable ident val env = env { variables = Map.insert ident val (variables env) }
 
-getVariable :: Ident -> R Value
+getVariable :: Ident -> IM Value
 getVariable ident = (Map.!) <$> (asks variables) <*> pure ident
 
 getFunction :: Value -> (Ident, Expr, Env)
@@ -61,7 +64,7 @@ match pattern value = case (pattern, value) of
   (CaptureList [], List []) -> Just []
   _ -> Nothing
 
-interpretExpr :: Expr -> R Value
+interpretExpr :: Expr -> IM Value
 interpretExpr x = case x of
   EAdd expr0 expr1  -> liftM2 add (interpretExpr expr0) (interpretExpr expr1)
   ESub expr0 expr1  -> liftM2 sub (interpretExpr expr0) (interpretExpr expr1)
@@ -106,9 +109,12 @@ interpretExpr x = case x of
       handleClauses clauses value =
         foldl (combine value) Nothing clauses
       capture = (handleClauses clauses) <$> (interpretExpr expr)
-    in capture >>= (\(Just (captured, body)) -> local (\env -> foldl (\env -> (\(name, value) -> withVariable name value env)) env captured) (interpretExpr body))
+      handleMatch match = case match of
+        Just (captured, body) -> local (\env -> foldl (\env -> (\(name, value) -> withVariable name value env)) env captured) (interpretExpr body)
+        Nothing -> throwError "Unexhaustive match."
+    in capture >>= handleMatch
 
-interpretStmt :: Stmt -> R (Env -> Env)
+interpretStmt :: Stmt -> IM (Env -> Env)
 interpretStmt stmt = case stmt of
   SDeclVar ident expr -> (withVariable ident) <$> (interpretExpr expr)
   SDeclFun fName argNames expr -> 
@@ -126,4 +132,7 @@ main = do
 
 calc s =
     let Ok e = pExpr (myLexer s)
-    in show (runReader (interpretExpr e) startEnv)
+        out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
+    in case out of
+        Left e -> "Error: " ++ (show e)
+        Right val -> show val
