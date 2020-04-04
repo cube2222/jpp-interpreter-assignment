@@ -13,20 +13,43 @@ import Language.ErrM
 
 data Value = Integer Integer | Bool Bool | List [Value] | Fun Expr Env deriving (Show)
 
-add (Integer v1) (Integer v2) = Integer (v1 + v2)
-sub (Integer v1) (Integer v2) = Integer (v1 - v2)
-multiply (Integer v1) (Integer v2) = Integer (v1 * v2)
-divide (Integer v1) (Integer v2) = Integer (v1 `div` v2)
+invalidArgumentsError opName v1 v2 = showString "invalid arguments to '" . showString opName . showString "': " . shows v1 . showString " and " . shows v2 $ ""
 
-eq (Integer v1) (Integer v2) = Bool (v1 == v2)
-eq (Bool v1) (Bool v2) = Bool (v1 == v2)
-notEq (Integer v1) (Integer v2) = Bool (v1 /= v2)
-notEq (Bool v1) (Bool v2) = Bool (v1 /= v2)
+add :: Value -> Value -> IM Value
+add (Integer v1) (Integer v2) = pure . Integer $ (v1 + v2)
+add v1 v2 = throwError $ invalidArgumentsError "add" v1 v2
+sub :: Value -> Value -> IM Value
+sub (Integer v1) (Integer v2) = pure . Integer $ (v1 - v2)
+sub v1 v2 = throwError $ invalidArgumentsError "sub" v1 v2
+multiply :: Value -> Value -> IM Value
+multiply (Integer v1) (Integer v2) = pure . Integer $ (v1 * v2)
+multiply v1 v2 = throwError $ invalidArgumentsError "multiply" v1 v2
+divide :: Value -> Value -> IM Value
+divide (Integer v1) (Integer 0) = throwError "division by zero"
+divide (Integer v1) (Integer v2) = pure . Integer $ (v1 `div` v2)
+divide v1 v2 = throwError $ invalidArgumentsError "divide" v1 v2
 
-lt (Integer v1) (Integer v2) = Bool (v1 < v2)
-gt (Integer v1) (Integer v2) = Bool (v1 > v2)
-ltEq (Integer v1) (Integer v2) = Bool (v1 <= v2)
-gtEq (Integer v1) (Integer v2) = Bool (v1 >= v2)
+eq :: Value -> Value -> IM Value
+eq (Integer v1) (Integer v2) = pure . Bool $ (v1 == v2)
+eq (Bool v1) (Bool v2) = pure . Bool $ (v1 == v2)
+eq (List (v1:v1s)) (List (v2:v2s)) = eq v1 v2 >>= (\(Bool ok) -> if ok then eq (List v1s) (List v2s) else pure . Bool $ False)
+eq (List []) (List []) = pure . Bool $ True
+eq (List _) (List _) = pure . Bool $ False
+eq v1 v2 = throwError $ invalidArgumentsError "eq" v1 v2
+notEq v1 v2 = Bool . (\(Bool b) -> not b) <$> (eq v1 v2)
+
+lt :: Value -> Value -> IM Value
+lt (Integer v1) (Integer v2) = pure . Bool $ (v1 < v2)
+lt v1 v2 = throwError $ invalidArgumentsError "less than" v1 v2
+gt :: Value -> Value -> IM Value
+gt (Integer v1) (Integer v2) = pure . Bool $ (v1 > v2)
+gt v1 v2 = throwError $ invalidArgumentsError "greater than" v1 v2
+ltEq :: Value -> Value -> IM Value
+ltEq (Integer v1) (Integer v2) = pure . Bool $ (v1 <= v2)
+ltEq v1 v2 = throwError $ invalidArgumentsError "less than or equal" v1 v2
+gtEq :: Value -> Value -> IM Value
+gtEq (Integer v1) (Integer v2) = pure . Bool $ (v1 >= v2)
+gtEq v1 v2 = throwError $ invalidArgumentsError "greater than or equal" v1 v2
 
 data Env = Env { variables :: Map.Map Ident Value } deriving (Show)
 type IM = ReaderT Env (ExceptT String Identity)
@@ -36,22 +59,27 @@ withVariable :: Ident -> Value -> Env -> Env
 withVariable ident val env = env { variables = Map.insert ident val (variables env) }
 
 getVariable :: Ident -> IM Value
-getVariable ident = (Map.!) <$> (asks variables) <*> pure ident
+getVariable ident@(Ident str) = (Map.lookup) <$> (pure ident) <*> (asks variables) >>= 
+  (\result -> case result of 
+    Just value -> pure value
+    Nothing -> throwError $ showString "unknown variable used: " . showString str $ ""
+    )
 
 getFunction :: Value -> (Ident, Expr, Env)
 getFunction (Fun (ELambda argName bodyExpr) env) = (argName, bodyExpr, env)
 
 data CaptureExpression = CaptureInteger Integer | CaptureBool Bool | CaptureCons CaptureExpression CaptureExpression  | CaptureList [CaptureExpression] | CaptureVariable Ident
 
-interpretMatchExpression :: Expr -> CaptureExpression
+interpretMatchExpression :: Expr -> IM CaptureExpression
 interpretMatchExpression x = case x of
-  EInt n -> CaptureInteger n
-  ETrue -> CaptureBool True
-  EFalse -> CaptureBool False
-  EVar ident -> CaptureVariable ident
-  ECons head tail -> CaptureCons (interpretMatchExpression head) (interpretMatchExpression tail)
-  ENil -> CaptureList []
-  EList exprs -> CaptureList (foldr (\expr -> (\list -> (interpretMatchExpression expr) : list)) [] exprs)
+  EInt n -> pure . CaptureInteger $ n
+  ETrue -> pure . CaptureBool $ True
+  EFalse -> pure . CaptureBool $ False
+  EVar ident -> pure . CaptureVariable $ ident
+  ECons head tail -> (liftM2 CaptureCons) (interpretMatchExpression head) (interpretMatchExpression tail)
+  ENil -> pure . CaptureList $ []
+  EList exprs -> CaptureList <$> (foldr (\expr -> (\list -> list >>= (\list -> (\expr -> expr : list) <$> (interpretMatchExpression expr)))) (pure []) exprs)
+  _ -> throwError "invalid match expression"
 
 -- TODO This has to return ExceptT on duplicate identificator
 match :: CaptureExpression -> Value -> Maybe [(Ident, Value)]
@@ -64,18 +92,20 @@ match pattern value = case (pattern, value) of
   (CaptureList [], List []) -> Just []
   _ -> Nothing
 
+binaryOp op expr0 expr1 = (interpretExpr expr0) >>= (\expr0 -> (interpretExpr expr1) >>= (\expr1 -> op expr0 expr1))
+
 interpretExpr :: Expr -> IM Value
 interpretExpr x = case x of
-  EAdd expr0 expr1  -> liftM2 add (interpretExpr expr0) (interpretExpr expr1)
-  ESub expr0 expr1  -> liftM2 sub (interpretExpr expr0) (interpretExpr expr1)
-  EMul expr0 expr1  -> liftM2 multiply (interpretExpr expr0) (interpretExpr expr1)
-  EDiv expr0 expr1  -> liftM2 divide (interpretExpr expr0) (interpretExpr expr1)
-  EEq expr0 expr1 -> liftM2 eq (interpretExpr expr0) (interpretExpr expr1)
-  ENotEq expr0 expr1 -> liftM2 notEq (interpretExpr expr0) (interpretExpr expr1)
-  ELt expr0 expr1 -> liftM2 lt (interpretExpr expr0) (interpretExpr expr1)
-  EGt expr0 expr1 -> liftM2 gt (interpretExpr expr0) (interpretExpr expr1)
-  ELtEq expr0 expr1 -> liftM2 ltEq (interpretExpr expr0) (interpretExpr expr1)
-  EGtEq expr0 expr1 -> liftM2 gtEq (interpretExpr expr0) (interpretExpr expr1)
+  EAdd expr0 expr1  -> binaryOp add expr0 expr1
+  ESub expr0 expr1  -> binaryOp sub expr0 expr1
+  EMul expr0 expr1  -> binaryOp multiply expr0 expr1
+  EDiv expr0 expr1  -> binaryOp divide expr0 expr1
+  EEq expr0 expr1 -> binaryOp eq expr0 expr1
+  ENotEq expr0 expr1 -> binaryOp notEq expr0 expr1
+  ELt expr0 expr1 -> binaryOp lt expr0 expr1
+  EGt expr0 expr1 -> binaryOp gt expr0 expr1
+  ELtEq expr0 expr1 -> binaryOp ltEq expr0 expr1
+  EGtEq expr0 expr1 -> binaryOp gtEq expr0 expr1
   EInt n -> pure . Integer $ n
   ETrue -> pure . Bool $ True
   EFalse -> pure . Bool $ False
@@ -86,7 +116,10 @@ interpretExpr x = case x of
   EIfte predicateExpr thenExpr elseExpr ->
     let
       predicate = interpretExpr predicateExpr
-      branch = (\(Bool b) -> if b then thenExpr else elseExpr) <$> predicate
+      branch = predicate >>= (\value -> case value of
+        Bool b -> pure $ if b then thenExpr else elseExpr
+        v -> throwError $ showString "invalid predicate in if expression: " . shows v $ ""
+        )
     in
       branch >>= interpretExpr
   ESemicolon stmt expr -> (interpretStmt stmt) >>= ((flip local) (interpretExpr expr))
@@ -103,12 +136,14 @@ interpretExpr x = case x of
   ELambda argName expr -> Fun (ELambda argName expr) <$> ask
   EMatch expr clauses ->
     let 
-      combine value acc (MMatchClause capture body) = case acc of
-        Just g -> Just g
-        Nothing -> (\captured -> (captured, body)) <$> (match (interpretMatchExpression capture) value)
+      combine :: Value -> MatchClause -> Maybe ([(Ident, Value)], Expr) -> IM (Maybe ([(Ident, Value)], Expr))
+      combine value (MMatchClause capture body) acc = case acc of
+        Just g -> pure . Just $ g
+        Nothing -> (liftM (\captured -> (captured, body))) <$> ((\captureExpr -> match captureExpr value) <$> (interpretMatchExpression capture))
+      handleClauses :: [MatchClause] -> Value -> IM (Maybe ([(Ident, Value)], Expr))
       handleClauses clauses value =
-        foldl (combine value) Nothing clauses
-      capture = (handleClauses clauses) <$> (interpretExpr expr)
+        foldl (\acc -> (\clause -> acc >>= (\acc -> combine value clause acc))) (pure Nothing) clauses
+      capture = (interpretExpr expr) >>= (handleClauses clauses) 
       handleMatch match = case match of
         Just (captured, body) -> local (\env -> foldl (\env -> (\(name, value) -> withVariable name value env)) env captured) (interpretExpr body)
         Nothing -> throwError "Unexhaustive match."
@@ -134,5 +169,5 @@ calc s =
     let Ok e = pExpr (myLexer s)
         out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
     in case out of
-        Left e -> "Error: " ++ (show e)
+        Left e -> "Error: " ++ e
         Right val -> show val
