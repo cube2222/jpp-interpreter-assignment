@@ -14,32 +14,46 @@ import Language.Print
 
 type TCM = ReaderT Env (ExceptT String Identity)
 
-data Type = TInteger | TBool | TList | TFun Type Type deriving (Eq, Show)
+data Type = TInteger | TBool | TList Type | TNil | TFun Type Type deriving (Eq, Show)
 
-assertType :: Expr -> Type -> TCM Type
-assertType expr expectedType = (getExprType expr) >>= 
-    (\actualType -> if actualType /= expectedType 
-                    then throwError $ showString "expression " . shows (printTree expr) . showString " expected to be of type: '" . shows expectedType . showString "' but is of type: '" . shows actualType $ "'" 
+assertType :: Expr -> [Type] -> TCM Type
+assertType expr expectedTypes = (getExprType expr) >>= 
+    (\actualType -> if not (elem actualType expectedTypes) 
+                    then throwError $ showString "expression " . shows (printTree expr) . showString " expected to be one of types: '" . shows expectedTypes . showString "' but is of type: '" . shows actualType $ "'" 
                     else pure actualType)
+
+--unify :: [Type] -> TCM Type
+--unify expr expectedTypes = (getExprType expr) >>= 
+--    (\actualType -> if not (elem actualType expectedTypes) 
+--                    then throwError $ showString "expression " . shows (printTree expr) . showString " expected to be one of types: '" . shows expectedTypes . showString "' but is of type: '" . shows actualType $ "'" 
+--                    else pure actualType)
 
 getExprType :: Expr -> TCM Type
 getExprType x = case x of
-  EAdd expr0 expr1  -> (assertType expr0 TInteger) >>= (\_ -> (assertType expr1 TInteger)) >>= (\_ -> pure TInteger)
-  ESub expr0 expr1  -> undefined
-  EMul expr0 expr1  -> undefined
-  EDiv expr0 expr1  -> undefined
-  EEq expr0 expr1 -> undefined
-  ENotEq expr0 expr1 -> undefined
-  ELt expr0 expr1 -> undefined
-  EGt expr0 expr1 -> undefined
-  ELtEq expr0 expr1 -> undefined
-  EGtEq expr0 expr1 -> undefined
+  EAdd expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
+  ESub expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
+  EMul expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
+  EDiv expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
+  -- TODO: Add recursive list checking
+  EEq expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\_ -> (assertType expr1 [TInteger, TBool])) >>= (\_ -> pure TInteger)
+  ENotEq expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\_ -> (assertType expr1 [TInteger, TBool])) >>= (\_ -> pure TInteger)
+  ELt expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
+  EGt expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
+  ELtEq expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
+  EGtEq expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
   EInt n -> pure TInteger
   ETrue -> pure TBool
   EFalse -> pure TBool
   EVar ident -> undefined
-  ECons x xs -> undefined
-  ENil -> undefined
+  ECons x xs -> (getExprType xs) >>=
+    (\tailType -> case tailType of
+      TList t -> (getExprType x) >>= (\headType -> if headType == t 
+                                                   then pure . TList $ headType 
+                                                   else throwError $ showString "tail of cons has different type than head, have: " . shows headType . showString " and " . shows t $ "")
+      TNil -> TList <$> getExprType x
+      _ -> throwError $ showString "tail of cons has to be of List type, is: " . shows tailType $ ""
+    )
+  ENil -> pure TNil
   EList exprs -> undefined
   EIfte predicateExpr thenExpr elseExpr -> undefined
   ESemicolon stmt expr -> undefined
@@ -208,9 +222,9 @@ calc s =
         outType = runIdentity (runExceptT (runReaderT (getExprType e) startEnv))
     in case outType of
         Left e -> "Type Error: " ++ e
-        Right typeName -> 
-          let 
-            out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
-          in case out of
-            Left e -> "Runtime Error: " ++ e
-            Right val -> show val
+        Right typeName -> show typeName
+          --let 
+          --  out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
+          --in case out of
+          --  Left e -> "Runtime Error: " ++ e
+          --  Right val -> show val
