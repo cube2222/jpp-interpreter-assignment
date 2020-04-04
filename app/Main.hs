@@ -10,6 +10,44 @@ import Language.Lex
 import Language.Par
 import Language.Abs
 import Language.ErrM
+import Language.Print
+
+type TCM = ReaderT Env (ExceptT String Identity)
+
+data Type = TInteger | TBool | TList | TFun Type Type deriving (Eq, Show)
+
+assertType :: Expr -> Type -> TCM Type
+assertType expr expectedType = (getExprType expr) >>= 
+    (\actualType -> if actualType /= expectedType 
+                    then throwError $ showString "expression " . shows (printTree expr) . showString " expected to be of type: '" . shows expectedType . showString "' but is of type: '" . shows actualType $ "'" 
+                    else pure actualType)
+
+getExprType :: Expr -> TCM Type
+getExprType x = case x of
+  EAdd expr0 expr1  -> (assertType expr0 TInteger) >>= (\_ -> (assertType expr1 TInteger)) >>= (\_ -> pure TInteger)
+  ESub expr0 expr1  -> undefined
+  EMul expr0 expr1  -> undefined
+  EDiv expr0 expr1  -> undefined
+  EEq expr0 expr1 -> undefined
+  ENotEq expr0 expr1 -> undefined
+  ELt expr0 expr1 -> undefined
+  EGt expr0 expr1 -> undefined
+  ELtEq expr0 expr1 -> undefined
+  EGtEq expr0 expr1 -> undefined
+  EInt n -> pure TInteger
+  ETrue -> pure TBool
+  EFalse -> pure TBool
+  EVar ident -> undefined
+  ECons x xs -> undefined
+  ENil -> undefined
+  EList exprs -> undefined
+  EIfte predicateExpr thenExpr elseExpr -> undefined
+  ESemicolon stmt expr -> undefined
+  EFunCall funExpr argExprs -> undefined
+  ELambda argName expr -> undefined
+  EMatch expr clauses -> undefined
+
+-- Runtime
 
 data Value = Integer Integer | Bool Bool | List [Value] | Fun Expr Env deriving (Show)
 
@@ -167,7 +205,12 @@ main = do
 
 calc s =
     let Ok e = pExpr (myLexer s)
-        out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
-    in case out of
-        Left e -> "Error: " ++ e
-        Right val -> show val
+        outType = runIdentity (runExceptT (runReaderT (getExprType e) startEnv))
+    in case outType of
+        Left e -> "Type Error: " ++ e
+        Right typeName -> 
+          let 
+            out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
+          in case out of
+            Left e -> "Runtime Error: " ++ e
+            Right val -> show val
