@@ -8,6 +8,8 @@ import Language.ErrM
 
 }
 
+%name pTypeName TypeName
+%name pListTypeName ListTypeName
 %name pExpr Expr
 %name pExpr1 Expr1
 %name pExpr2 Expr2
@@ -55,17 +57,24 @@ import Language.ErrM
   '{' { PT _ (TS _ 33) }
   '}' { PT _ (TS _ 34) }
   '~>' { PT _ (TS _ 35) }
-  L_integ  { PT _ (TI $$) }
   L_ident  { PT _ (TV $$) }
+  L_integ  { PT _ (TI $$) }
 
 %%
-
-Integer :: { Integer }
-Integer  : L_integ  { (read ( $1)) :: Integer }
 
 Ident   :: { Ident }
 Ident    : L_ident  { Ident $1 }
 
+Integer :: { Integer }
+Integer  : L_integ  { (read ( $1)) :: Integer }
+
+TypeName :: { TypeName }
+TypeName : Ident { Language.Abs.TSimpleTypeName $1 }
+         | Ident '<' ListTypeName '>' { Language.Abs.TPolymorphicTypeName $1 $3 }
+ListTypeName :: { [TypeName] }
+ListTypeName : {- empty -} { [] }
+             | TypeName { (:[]) $1 }
+             | TypeName ',' ListTypeName { (:) $1 $3 }
 Expr :: { Expr }
 Expr : Expr '+' Expr1 { Language.Abs.EAdd $1 $3 }
      | Expr '-' Expr1 { Language.Abs.ESub $1 $3 }
@@ -77,7 +86,7 @@ Expr : Expr '+' Expr1 { Language.Abs.EAdd $1 $3 }
      | Expr '>=' Expr1 { Language.Abs.EGtEq $1 $3 }
      | Expr 'or' Expr1 { Language.Abs.EOr $1 $3 }
      | Expr 'and' Expr1 { Language.Abs.EAnd $1 $3 }
-     | Ident '->' Expr1 { Language.Abs.ELambda $1 $3 }
+     | Ident ':' TypeName '->' Expr1 { Language.Abs.ELambda $1 $3 $5 }
      | '[' ListExpr ']' { Language.Abs.EList $2 }
      | Expr ':' Expr { Language.Abs.ECons $1 $3 }
      | 'nil' { Language.Abs.ENil }

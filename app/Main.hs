@@ -16,6 +16,27 @@ type TCM = ReaderT Env (ExceptT String Identity)
 
 data Type = TInteger | TBool | TList Type | TNil | TFun Type Type deriving (Eq, Show)
 
+getType :: TypeName -> TCM Type -- TODO: add custom type handling
+getType typeName = case typeName of
+  TSimpleTypeName (Ident name) -> case name of
+    "Int" -> pure TInteger
+    "Bool" -> pure TBool
+    _ -> (throwError $
+      showString "unknown simple type name: " .
+      showString name $
+      "")
+  TPolymorphicTypeName (Ident name) params -> case name of -- TODO: Multiargument function syntax sugar support, or maybe not?
+    "List" -> do
+      when ((length params) /= 1) (throwError $
+        showString "exactly 1 type argument expected for list, got " .
+        shows (length params) .
+        showString ": " .
+        shows (printTree typeName) $
+        "")
+      elementType <- getType (head params)
+      return (TList elementType)
+    
+
 assertType :: Expr -> [Type] -> TCM Type
 assertType expr expectedTypes = (getExprType expr) >>= 
     (\actualType -> if not (elem actualType expectedTypes) 
@@ -54,11 +75,42 @@ getExprType x = case x of
       _ -> throwError $ showString "tail of cons has to be of List type, is: " . shows tailType $ ""
     )
   ENil -> pure TNil
-  EList exprs -> undefined
-  EIfte predicateExpr thenExpr elseExpr -> undefined
+  EList [] -> pure TNil
+  EList (x:xs) -> let 
+    checkUniformType headType xs =
+      foldl (\acc -> (\curExpr -> do
+        accType <- acc
+        curType <- getExprType curExpr
+        when (accType /= curType) (throwError $ 
+          showString "found expressions of differing types in list literal: " . 
+          shows (printTree x) . showString " of type " . shows accType .
+          showString " and " . 
+          shows (printTree curExpr) . showString " of type " . shows curType $ 
+          "")
+        return accType
+      )) headType xs
+    in TList <$> checkUniformType (getExprType x) xs
+  EIfte predicateExpr thenExpr elseExpr -> do
+    predicateType <- getExprType predicateExpr
+    when (predicateType /= TBool) (throwError $ 
+      showString "predicate in if expression must be boolean, is: " . 
+      shows (printTree predicateExpr) . showString " of type " . shows predicateType $
+      "")
+    thenType <- getExprType thenExpr
+    elseType <- getExprType elseExpr
+    when (thenType /= elseType) (throwError $ 
+      showString "found expressions of differing types in if-then-else branches: " . 
+      shows (printTree thenExpr) . showString " of type " . shows thenType .
+      showString " and " . 
+      shows (printTree elseExpr) . showString " of type " . shows elseType $ 
+      "")
+    return thenType
   ESemicolon stmt expr -> undefined
   EFunCall funExpr argExprs -> undefined
-  ELambda argName expr -> undefined
+  ELambda _ argTypeName expr -> do -- TODO: add argument in lambda as proper type
+    argType <- getType argTypeName
+    exprType <- getExprType expr
+    return (TFun argType exprType)
   EMatch expr clauses -> undefined
 
 -- Runtime
@@ -118,7 +170,7 @@ getVariable ident@(Ident str) = (Map.lookup) <$> (pure ident) <*> (asks variable
     )
 
 getFunction :: Value -> (Ident, Expr, Env)
-getFunction (Fun (ELambda argName bodyExpr) env) = (argName, bodyExpr, env)
+getFunction (Fun (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) bodyExpr) env) = (argName, bodyExpr, env) -- TODO: Fix this lambda type
 
 data CaptureExpression = CaptureInteger Integer | CaptureBool Bool | CaptureCons CaptureExpression CaptureExpression  | CaptureList [CaptureExpression] | CaptureVariable Ident
 
@@ -177,7 +229,7 @@ interpretExpr x = case x of
   ESemicolon stmt expr -> (interpretStmt stmt) >>= ((flip local) (interpretExpr expr))
   EFunCall funExpr argExprs ->
     let 
-      handleSingleLevel argExpr (Fun (ELambda argName bodyExpr) env) = 
+      handleSingleLevel argExpr (Fun (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) bodyExpr) env) =   -- TODO: Fix this lambda type
         let 
           funcParams = do
             argVal <- (interpretExpr argExpr)
@@ -185,7 +237,7 @@ interpretExpr x = case x of
           callFunc (argName, argVal, bodyExpr, env) = local (\ _ -> withVariable argName argVal env) (interpretExpr bodyExpr)
         in funcParams >>= callFunc
     in foldl (\f -> (\expr -> (f >>= handleSingleLevel expr))) (interpretExpr funExpr) argExprs
-  ELambda argName expr -> Fun (ELambda argName expr) <$> ask
+  ELambda argName _ expr -> Fun (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) expr) <$> ask -- TODO: Fix this lambda type
   EMatch expr clauses ->
     let 
       combine :: Value -> MatchClause -> Maybe ([(Ident, Value)], Expr) -> IM (Maybe ([(Ident, Value)], Expr))
@@ -209,7 +261,7 @@ interpretStmt stmt = case stmt of
       makeFun env = 
         let
           recEnv = withVariable fName recFun env
-          recFun = Fun (foldr (\argName -> (\expr -> (ELambda argName expr))) expr argNames) recEnv
+          recFun = Fun (foldr (\argName -> (\expr -> (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) expr))) expr argNames) recEnv -- TODO: Fix this lambda type
         in recFun
     in (withVariable fName) <$> (makeFun <$> ask)
 
@@ -218,13 +270,17 @@ main = do
     putStrLn ""
 
 calc s =
-    let Ok e = pExpr (myLexer s)
-        outType = runIdentity (runExceptT (runReaderT (getExprType e) startEnv))
-    in case outType of
-        Left e -> "Type Error: " ++ e
-        Right typeName -> show typeName
-          --let 
-          --  out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
-          --in case out of
-          --  Left e -> "Runtime Error: " ++ e
-          --  Right val -> show val
+    let parserOut = pExpr (myLexer s)
+    in case parserOut of
+      Bad err -> show err
+      Ok expr -> 
+        let
+          outType = runIdentity (runExceptT (runReaderT (getExprType expr) startEnv))
+        in case outType of
+          Left e -> "Type Error: " ++ e
+          Right typeName -> show typeName
+            --let 
+            --  out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
+            --in case out of
+            --  Left e -> "Runtime Error: " ++ e
+            --  Right val -> show val

@@ -32,11 +32,11 @@ The reserved words used in language are the following:
   | ``val`` |  |  |
 
 The symbols used in language are the following:
-  | + | - | * | /
-  | == | != | < | >
-  | <= | >= | -> | (
-  | ) | , | [ | ]
-  | : | ; | = | {
+  | < | > | , | +
+  | - | * | / | ==
+  | != | <= | >= | :
+  | -> | ( | ) | [
+  | ] | ; | = | {
   | } | ~> |  |
 
 ===Comments===
@@ -48,6 +48,11 @@ The symbols -> (production),  **|**  (union)
 and **eps** (empty rule) belong to the BNF notation.
 All other symbols are terminals.
 
+  | //TypeName// | -> | //Ident//
+  |  |  **|**  | //Ident// ``<`` //[TypeName]// ``>``
+  | //[TypeName]// | -> | **eps**
+  |  |  **|**  | //TypeName//
+  |  |  **|**  | //TypeName// ``,`` //[TypeName]//
   | //Expr// | -> | //Expr// ``+`` //Expr1//
   |  |  **|**  | //Expr// ``-`` //Expr1//
   |  |  **|**  | //Expr// ``==`` //Expr1//
@@ -58,7 +63,7 @@ All other symbols are terminals.
   |  |  **|**  | //Expr// ``>=`` //Expr1//
   |  |  **|**  | //Expr// ``or`` //Expr1//
   |  |  **|**  | //Expr// ``and`` //Expr1//
-  |  |  **|**  | //Ident// ``->`` //Expr1//
+  |  |  **|**  | //Ident// ``:`` //TypeName// ``->`` //Expr1//
   |  |  **|**  | ``[`` //[Expr]// ``]``
   |  |  **|**  | //Expr// ``:`` //Expr//
   |  |  **|**  | ``nil``

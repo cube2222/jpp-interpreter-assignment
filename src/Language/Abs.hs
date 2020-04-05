@@ -6,6 +6,10 @@ module Language.Abs where
 newtype Ident = Ident String
   deriving (Eq, Ord, Show, Read)
 
+data TypeName
+    = TSimpleTypeName Ident | TPolymorphicTypeName Ident [TypeName]
+  deriving (Eq, Ord, Show, Read)
+
 data Expr
     = EAdd Expr Expr
     | ESub Expr Expr
@@ -23,7 +27,7 @@ data Expr
     | ENot Expr
     | ETrue
     | EFalse
-    | ELambda Ident Expr
+    | ELambda Ident TypeName Expr
     | EVar Ident
     | EFunCall Expr [Expr]
     | EList [Expr]

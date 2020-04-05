@@ -94,6 +94,17 @@ instance Print Language.Abs.Ident where
   prtList _ [x] = concatD [prt 0 x]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
+instance Print Language.Abs.TypeName where
+  prt i e = case e of
+    Language.Abs.TSimpleTypeName id -> prPrec i 0 (concatD [prt 0 id])
+    Language.Abs.TPolymorphicTypeName id typenames -> prPrec i 0 (concatD [prt 0 id, doc (showString "<"), prt 0 typenames, doc (showString ">")])
+  prtList _ [] = concatD []
+  prtList _ [x] = concatD [prt 0 x]
+  prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
+
+instance Print [Language.Abs.TypeName] where
+  prt = prtList
+
 instance Print Language.Abs.Expr where
   prt i e = case e of
     Language.Abs.EAdd expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 1 expr2])
@@ -112,7 +123,7 @@ instance Print Language.Abs.Expr where
     Language.Abs.ENot expr -> prPrec i 1 (concatD [doc (showString "not"), prt 2 expr])
     Language.Abs.ETrue -> prPrec i 2 (concatD [doc (showString "true")])
     Language.Abs.EFalse -> prPrec i 2 (concatD [doc (showString "false")])
-    Language.Abs.ELambda id expr -> prPrec i 0 (concatD [prt 0 id, doc (showString "->"), prt 1 expr])
+    Language.Abs.ELambda id typename expr -> prPrec i 0 (concatD [prt 0 id, doc (showString ":"), prt 0 typename, doc (showString "->"), prt 1 expr])
     Language.Abs.EVar id -> prPrec i 2 (concatD [prt 0 id])
     Language.Abs.EFunCall expr exprs -> prPrec i 2 (concatD [prt 0 expr, doc (showString "("), prt 0 exprs, doc (showString ")")])
     Language.Abs.EList exprs -> prPrec i 0 (concatD [doc (showString "["), prt 0 exprs, doc (showString "]")])

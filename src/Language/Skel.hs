@@ -12,6 +12,10 @@ failure x = Bad $ "Undefined case: " ++ show x
 transIdent :: Ident -> Result
 transIdent x = case x of
   Ident string -> failure x
+transTypeName :: TypeName -> Result
+transTypeName x = case x of
+  TSimpleTypeName ident -> failure x
+  TPolymorphicTypeName ident typenames -> failure x
 transExpr :: Expr -> Result
 transExpr x = case x of
   EAdd expr1 expr2 -> failure x
@@ -30,7 +34,7 @@ transExpr x = case x of
   ENot expr -> failure x
   ETrue -> failure x
   EFalse -> failure x
-  ELambda ident expr -> failure x
+  ELambda ident typename expr -> failure x
   EVar ident -> failure x
   EFunCall expr exprs -> failure x
   EList exprs -> failure x
