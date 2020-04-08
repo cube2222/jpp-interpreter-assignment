@@ -34,10 +34,10 @@ The reserved words used in language are the following:
 The symbols used in language are the following:
   | < | > | , | +
   | - | * | / | ==
-  | != | <= | >= | :
-  | -> | ( | ) | [
-  | ] | ; | = | {
-  | } | ~> |  |
+  | != | <= | >= | (
+  | : | -> | ) | [
+  | ] | :: | ; | =
+  | { | } | ~> |
 
 ===Comments===
 There are no single-line comments in the grammar.There are no multiple-line comments in the grammar.
@@ -53,44 +53,52 @@ All other symbols are terminals.
   | //[TypeName]// | -> | **eps**
   |  |  **|**  | //TypeName//
   |  |  **|**  | //TypeName// ``,`` //[TypeName]//
-  | //Expr// | -> | //Expr// ``+`` //Expr1//
-  |  |  **|**  | //Expr// ``-`` //Expr1//
-  |  |  **|**  | //Expr// ``==`` //Expr1//
-  |  |  **|**  | //Expr// ``!=`` //Expr1//
-  |  |  **|**  | //Expr// ``<`` //Expr1//
-  |  |  **|**  | //Expr// ``>`` //Expr1//
-  |  |  **|**  | //Expr// ``<=`` //Expr1//
-  |  |  **|**  | //Expr// ``>=`` //Expr1//
-  |  |  **|**  | //Expr// ``or`` //Expr1//
-  |  |  **|**  | //Expr// ``and`` //Expr1//
-  |  |  **|**  | //Ident// ``:`` //TypeName// ``->`` //Expr1//
-  |  |  **|**  | ``[`` //[Expr]// ``]``
-  |  |  **|**  | //Expr// ``:`` //Expr//
+  | //Expr6// | -> | //Expr6// ``+`` //Expr7//
+  |  |  **|**  | //Expr6// ``-`` //Expr7//
+  |  |  **|**  | //Expr7//
+  | //Expr7// | -> | //Expr7// ``*`` //Expr8//
+  |  |  **|**  | //Expr7// ``/`` //Expr8//
+  |  |  **|**  | ``not`` //Expr8//
+  |  |  **|**  | //Expr8//
+  | //Expr5// | -> | //Expr5// ``==`` //Expr6//
+  |  |  **|**  | //Expr5// ``!=`` //Expr6//
+  |  |  **|**  | //Expr5// ``<`` //Expr6//
+  |  |  **|**  | //Expr5// ``>`` //Expr6//
+  |  |  **|**  | //Expr5// ``<=`` //Expr6//
+  |  |  **|**  | //Expr5// ``>=`` //Expr6//
   |  |  **|**  | ``nil``
-  |  |  **|**  | ``if`` //Expr// ``then`` //Expr// ``else`` //Expr//
-  |  |  **|**  | //Stmt// ``;`` //Expr//
-  |  |  **|**  | ``match`` //Expr1// ``as`` //[MatchClause]//
-  |  |  **|**  | //Expr1//
-  | //Expr1// | -> | //Expr1// ``*`` //Expr2//
-  |  |  **|**  | //Expr1// ``/`` //Expr2//
-  |  |  **|**  | ``not`` //Expr2//
-  |  |  **|**  | //Expr2//
-  | //Expr2// | -> | //Integer//
+  |  |  **|**  | //Expr6//
+  | //Expr10// | -> | //Integer//
   |  |  **|**  | ``true``
   |  |  **|**  | ``false``
   |  |  **|**  | //Ident//
-  |  |  **|**  | //Expr// ``(`` //[Expr]// ``)``
   |  |  **|**  | ``(`` //Expr// ``)``
+  | //Expr2// | -> | //Expr2// ``or`` //Expr5//
+  |  |  **|**  | //Expr2// ``and`` //Expr5//
+  |  |  **|**  | //Expr3//
+  | //Expr9// | -> | ``(`` //Ident// ``:`` //TypeName// ``->`` //Expr10// ``)``
+  |  |  **|**  | //Expr9// ``(`` //[Expr]// ``)``
+  |  |  **|**  | //Expr10//
   | //[Expr]// | -> | **eps**
   |  |  **|**  | //Expr//
   |  |  **|**  | //Expr// ``,`` //[Expr]//
+  | //Expr4// | -> | ``[`` //[Expr]// ``]``
+  |  |  **|**  | //Expr4// ``::`` //Expr5//
+  |  |  **|**  | //Expr5//
+  | //Expr3// | -> | ``if`` //Expr3// ``then`` //Expr3// ``else`` //Expr3//
+  |  |  **|**  | //Expr4//
+  | //Expr1// | -> | //Stmt// ``;`` //Expr2//
+  |  |  **|**  | //Expr2//
   | //Stmt// | -> | ``val`` //Ident// ``=`` //Expr//
   |  |  **|**  | ``fun`` //Ident// ``(`` //[Ident]// ``)`` ``{`` //Expr// ``}``
   | //[Ident]// | -> | **eps**
   |  |  **|**  | //Ident//
   |  |  **|**  | //Ident// ``,`` //[Ident]//
-  | //MatchClause// | -> | //Expr// ``~>`` //Expr//
+  | //MatchClause// | -> | ``as`` //Expr1// ``~>`` //Expr2//
+  | //Expr// | -> | ``match`` //Expr1// //[MatchClause]//
+  |  |  **|**  | //Expr1//
   | //[MatchClause]// | -> | **eps**
   |  |  **|**  | //MatchClause// //[MatchClause]//
+  | //Expr8// | -> | //Expr9//
 
 

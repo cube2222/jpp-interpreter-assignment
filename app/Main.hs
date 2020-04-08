@@ -273,12 +273,12 @@ calc s =
     let parserOut = pExpr (myLexer s)
     in case parserOut of
       Bad err -> show err
-      Ok expr -> 
-        let
-          outType = runIdentity (runExceptT (runReaderT (getExprType expr) startEnv))
-        in case outType of
-          Left e -> "Type Error: " ++ e
-          Right typeName -> show typeName
+      Ok expr -> show expr
+        -- let
+        --   outType = runIdentity (runExceptT (runReaderT (getExprType expr) startEnv))
+        -- in case outType of
+        --   Left e -> "Type Error: " ++ e
+        --   Right typeName -> show typeName
             --let 
             --  out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
             --in case out of

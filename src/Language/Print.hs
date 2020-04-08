@@ -107,31 +107,31 @@ instance Print [Language.Abs.TypeName] where
 
 instance Print Language.Abs.Expr where
   prt i e = case e of
-    Language.Abs.EAdd expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "+"), prt 1 expr2])
-    Language.Abs.ESub expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "-"), prt 1 expr2])
-    Language.Abs.EMul expr1 expr2 -> prPrec i 1 (concatD [prt 1 expr1, doc (showString "*"), prt 2 expr2])
-    Language.Abs.EDiv expr1 expr2 -> prPrec i 1 (concatD [prt 1 expr1, doc (showString "/"), prt 2 expr2])
-    Language.Abs.EEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "=="), prt 1 expr2])
-    Language.Abs.ENotEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "!="), prt 1 expr2])
-    Language.Abs.ELt expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "<"), prt 1 expr2])
-    Language.Abs.EGt expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString ">"), prt 1 expr2])
-    Language.Abs.ELtEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "<="), prt 1 expr2])
-    Language.Abs.EGtEq expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString ">="), prt 1 expr2])
-    Language.Abs.EInt n -> prPrec i 2 (concatD [prt 0 n])
-    Language.Abs.EOr expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "or"), prt 1 expr2])
-    Language.Abs.EAnd expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "and"), prt 1 expr2])
-    Language.Abs.ENot expr -> prPrec i 1 (concatD [doc (showString "not"), prt 2 expr])
-    Language.Abs.ETrue -> prPrec i 2 (concatD [doc (showString "true")])
-    Language.Abs.EFalse -> prPrec i 2 (concatD [doc (showString "false")])
-    Language.Abs.ELambda id typename expr -> prPrec i 0 (concatD [prt 0 id, doc (showString ":"), prt 0 typename, doc (showString "->"), prt 1 expr])
-    Language.Abs.EVar id -> prPrec i 2 (concatD [prt 0 id])
-    Language.Abs.EFunCall expr exprs -> prPrec i 2 (concatD [prt 0 expr, doc (showString "("), prt 0 exprs, doc (showString ")")])
-    Language.Abs.EList exprs -> prPrec i 0 (concatD [doc (showString "["), prt 0 exprs, doc (showString "]")])
-    Language.Abs.ECons expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString ":"), prt 0 expr2])
-    Language.Abs.ENil -> prPrec i 0 (concatD [doc (showString "nil")])
-    Language.Abs.EIfte expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "if"), prt 0 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 0 expr3])
-    Language.Abs.ESemicolon stmt expr -> prPrec i 0 (concatD [prt 0 stmt, doc (showString ";"), prt 0 expr])
-    Language.Abs.EMatch expr matchclauses -> prPrec i 0 (concatD [doc (showString "match"), prt 1 expr, doc (showString "as"), prt 0 matchclauses])
+    Language.Abs.EAdd expr1 expr2 -> prPrec i 6 (concatD [prt 6 expr1, doc (showString "+"), prt 7 expr2])
+    Language.Abs.ESub expr1 expr2 -> prPrec i 6 (concatD [prt 6 expr1, doc (showString "-"), prt 7 expr2])
+    Language.Abs.EMul expr1 expr2 -> prPrec i 7 (concatD [prt 7 expr1, doc (showString "*"), prt 8 expr2])
+    Language.Abs.EDiv expr1 expr2 -> prPrec i 7 (concatD [prt 7 expr1, doc (showString "/"), prt 8 expr2])
+    Language.Abs.EEq expr1 expr2 -> prPrec i 5 (concatD [prt 5 expr1, doc (showString "=="), prt 6 expr2])
+    Language.Abs.ENotEq expr1 expr2 -> prPrec i 5 (concatD [prt 5 expr1, doc (showString "!="), prt 6 expr2])
+    Language.Abs.ELt expr1 expr2 -> prPrec i 5 (concatD [prt 5 expr1, doc (showString "<"), prt 6 expr2])
+    Language.Abs.EGt expr1 expr2 -> prPrec i 5 (concatD [prt 5 expr1, doc (showString ">"), prt 6 expr2])
+    Language.Abs.ELtEq expr1 expr2 -> prPrec i 5 (concatD [prt 5 expr1, doc (showString "<="), prt 6 expr2])
+    Language.Abs.EGtEq expr1 expr2 -> prPrec i 5 (concatD [prt 5 expr1, doc (showString ">="), prt 6 expr2])
+    Language.Abs.EInt n -> prPrec i 10 (concatD [prt 0 n])
+    Language.Abs.EOr expr1 expr2 -> prPrec i 2 (concatD [prt 2 expr1, doc (showString "or"), prt 5 expr2])
+    Language.Abs.EAnd expr1 expr2 -> prPrec i 2 (concatD [prt 2 expr1, doc (showString "and"), prt 5 expr2])
+    Language.Abs.ENot expr -> prPrec i 7 (concatD [doc (showString "not"), prt 8 expr])
+    Language.Abs.ETrue -> prPrec i 10 (concatD [doc (showString "true")])
+    Language.Abs.EFalse -> prPrec i 10 (concatD [doc (showString "false")])
+    Language.Abs.ELambda id typename expr -> prPrec i 9 (concatD [doc (showString "("), prt 0 id, doc (showString ":"), prt 0 typename, doc (showString "->"), prt 10 expr, doc (showString ")")])
+    Language.Abs.EVar id -> prPrec i 10 (concatD [prt 0 id])
+    Language.Abs.EFunCall expr exprs -> prPrec i 9 (concatD [prt 9 expr, doc (showString "("), prt 0 exprs, doc (showString ")")])
+    Language.Abs.EList exprs -> prPrec i 4 (concatD [doc (showString "["), prt 0 exprs, doc (showString "]")])
+    Language.Abs.ECons expr1 expr2 -> prPrec i 4 (concatD [prt 4 expr1, doc (showString "::"), prt 5 expr2])
+    Language.Abs.ENil -> prPrec i 5 (concatD [doc (showString "nil")])
+    Language.Abs.EIfte expr1 expr2 expr3 -> prPrec i 3 (concatD [doc (showString "if"), prt 3 expr1, doc (showString "then"), prt 3 expr2, doc (showString "else"), prt 3 expr3])
+    Language.Abs.ESemicolon stmt expr -> prPrec i 1 (concatD [prt 0 stmt, doc (showString ";"), prt 2 expr])
+    Language.Abs.EMatch expr matchclauses -> prPrec i 0 (concatD [doc (showString "match"), prt 1 expr, prt 0 matchclauses])
   prtList _ [] = concatD []
   prtList _ [x] = concatD [prt 0 x]
   prtList _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
@@ -149,7 +149,7 @@ instance Print [Language.Abs.Ident] where
 
 instance Print Language.Abs.MatchClause where
   prt i e = case e of
-    Language.Abs.MMatchClause expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString "~>"), prt 0 expr2])
+    Language.Abs.MMatchClause expr1 expr2 -> prPrec i 0 (concatD [doc (showString "as"), prt 1 expr1, doc (showString "~>"), prt 2 expr2])
   prtList _ [] = concatD []
   prtList _ (x:xs) = concatD [prt 0 x, prt 0 xs]
 

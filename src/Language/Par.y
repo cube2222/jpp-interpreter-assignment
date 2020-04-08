@@ -10,14 +10,22 @@ import Language.ErrM
 
 %name pTypeName TypeName
 %name pListTypeName ListTypeName
-%name pExpr Expr
-%name pExpr1 Expr1
+%name pExpr6 Expr6
+%name pExpr7 Expr7
+%name pExpr5 Expr5
+%name pExpr10 Expr10
 %name pExpr2 Expr2
+%name pExpr9 Expr9
 %name pListExpr ListExpr
+%name pExpr4 Expr4
+%name pExpr3 Expr3
+%name pExpr1 Expr1
 %name pStmt Stmt
 %name pListIdent ListIdent
 %name pMatchClause MatchClause
+%name pExpr Expr
 %name pListMatchClause ListMatchClause
+%name pExpr8 Expr8
 -- no lexer declaration
 %monad { Err } { thenM } { returnM }
 %tokentype {Token}
@@ -32,31 +40,32 @@ import Language.ErrM
   '->' { PT _ (TS _ 8) }
   '/' { PT _ (TS _ 9) }
   ':' { PT _ (TS _ 10) }
-  ';' { PT _ (TS _ 11) }
-  '<' { PT _ (TS _ 12) }
-  '<=' { PT _ (TS _ 13) }
-  '=' { PT _ (TS _ 14) }
-  '==' { PT _ (TS _ 15) }
-  '>' { PT _ (TS _ 16) }
-  '>=' { PT _ (TS _ 17) }
-  '[' { PT _ (TS _ 18) }
-  ']' { PT _ (TS _ 19) }
-  'and' { PT _ (TS _ 20) }
-  'as' { PT _ (TS _ 21) }
-  'else' { PT _ (TS _ 22) }
-  'false' { PT _ (TS _ 23) }
-  'fun' { PT _ (TS _ 24) }
-  'if' { PT _ (TS _ 25) }
-  'match' { PT _ (TS _ 26) }
-  'nil' { PT _ (TS _ 27) }
-  'not' { PT _ (TS _ 28) }
-  'or' { PT _ (TS _ 29) }
-  'then' { PT _ (TS _ 30) }
-  'true' { PT _ (TS _ 31) }
-  'val' { PT _ (TS _ 32) }
-  '{' { PT _ (TS _ 33) }
-  '}' { PT _ (TS _ 34) }
-  '~>' { PT _ (TS _ 35) }
+  '::' { PT _ (TS _ 11) }
+  ';' { PT _ (TS _ 12) }
+  '<' { PT _ (TS _ 13) }
+  '<=' { PT _ (TS _ 14) }
+  '=' { PT _ (TS _ 15) }
+  '==' { PT _ (TS _ 16) }
+  '>' { PT _ (TS _ 17) }
+  '>=' { PT _ (TS _ 18) }
+  '[' { PT _ (TS _ 19) }
+  ']' { PT _ (TS _ 20) }
+  'and' { PT _ (TS _ 21) }
+  'as' { PT _ (TS _ 22) }
+  'else' { PT _ (TS _ 23) }
+  'false' { PT _ (TS _ 24) }
+  'fun' { PT _ (TS _ 25) }
+  'if' { PT _ (TS _ 26) }
+  'match' { PT _ (TS _ 27) }
+  'nil' { PT _ (TS _ 28) }
+  'not' { PT _ (TS _ 29) }
+  'or' { PT _ (TS _ 30) }
+  'then' { PT _ (TS _ 31) }
+  'true' { PT _ (TS _ 32) }
+  'val' { PT _ (TS _ 33) }
+  '{' { PT _ (TS _ 34) }
+  '}' { PT _ (TS _ 35) }
+  '~>' { PT _ (TS _ 36) }
   L_ident  { PT _ (TV $$) }
   L_integ  { PT _ (TI $$) }
 
@@ -75,41 +84,52 @@ ListTypeName :: { [TypeName] }
 ListTypeName : {- empty -} { [] }
              | TypeName { (:[]) $1 }
              | TypeName ',' ListTypeName { (:) $1 $3 }
-Expr :: { Expr }
-Expr : Expr '+' Expr1 { Language.Abs.EAdd $1 $3 }
-     | Expr '-' Expr1 { Language.Abs.ESub $1 $3 }
-     | Expr '==' Expr1 { Language.Abs.EEq $1 $3 }
-     | Expr '!=' Expr1 { Language.Abs.ENotEq $1 $3 }
-     | Expr '<' Expr1 { Language.Abs.ELt $1 $3 }
-     | Expr '>' Expr1 { Language.Abs.EGt $1 $3 }
-     | Expr '<=' Expr1 { Language.Abs.ELtEq $1 $3 }
-     | Expr '>=' Expr1 { Language.Abs.EGtEq $1 $3 }
-     | Expr 'or' Expr1 { Language.Abs.EOr $1 $3 }
-     | Expr 'and' Expr1 { Language.Abs.EAnd $1 $3 }
-     | Ident ':' TypeName '->' Expr1 { Language.Abs.ELambda $1 $3 $5 }
-     | '[' ListExpr ']' { Language.Abs.EList $2 }
-     | Expr ':' Expr { Language.Abs.ECons $1 $3 }
-     | 'nil' { Language.Abs.ENil }
-     | 'if' Expr 'then' Expr 'else' Expr { Language.Abs.EIfte $2 $4 $6 }
-     | Stmt ';' Expr { Language.Abs.ESemicolon $1 $3 }
-     | 'match' Expr1 'as' ListMatchClause { Language.Abs.EMatch $2 (reverse $4) }
-     | Expr1 { $1 }
-Expr1 :: { Expr }
-Expr1 : Expr1 '*' Expr2 { Language.Abs.EMul $1 $3 }
-      | Expr1 '/' Expr2 { Language.Abs.EDiv $1 $3 }
-      | 'not' Expr2 { Language.Abs.ENot $2 }
-      | Expr2 { $1 }
+Expr6 :: { Expr }
+Expr6 : Expr6 '+' Expr7 { Language.Abs.EAdd $1 $3 }
+      | Expr6 '-' Expr7 { Language.Abs.ESub $1 $3 }
+      | Expr7 { $1 }
+Expr7 :: { Expr }
+Expr7 : Expr7 '*' Expr8 { Language.Abs.EMul $1 $3 }
+      | Expr7 '/' Expr8 { Language.Abs.EDiv $1 $3 }
+      | 'not' Expr8 { Language.Abs.ENot $2 }
+      | Expr8 { $1 }
+Expr5 :: { Expr }
+Expr5 : Expr5 '==' Expr6 { Language.Abs.EEq $1 $3 }
+      | Expr5 '!=' Expr6 { Language.Abs.ENotEq $1 $3 }
+      | Expr5 '<' Expr6 { Language.Abs.ELt $1 $3 }
+      | Expr5 '>' Expr6 { Language.Abs.EGt $1 $3 }
+      | Expr5 '<=' Expr6 { Language.Abs.ELtEq $1 $3 }
+      | Expr5 '>=' Expr6 { Language.Abs.EGtEq $1 $3 }
+      | 'nil' { Language.Abs.ENil }
+      | Expr6 { $1 }
+Expr10 :: { Expr }
+Expr10 : Integer { Language.Abs.EInt $1 }
+       | 'true' { Language.Abs.ETrue }
+       | 'false' { Language.Abs.EFalse }
+       | Ident { Language.Abs.EVar $1 }
+       | '(' Expr ')' { $2 }
 Expr2 :: { Expr }
-Expr2 : Integer { Language.Abs.EInt $1 }
-      | 'true' { Language.Abs.ETrue }
-      | 'false' { Language.Abs.EFalse }
-      | Ident { Language.Abs.EVar $1 }
-      | Expr '(' ListExpr ')' { Language.Abs.EFunCall $1 $3 }
-      | '(' Expr ')' { $2 }
+Expr2 : Expr2 'or' Expr5 { Language.Abs.EOr $1 $3 }
+      | Expr2 'and' Expr5 { Language.Abs.EAnd $1 $3 }
+      | Expr3 { $1 }
+Expr9 :: { Expr }
+Expr9 : '(' Ident ':' TypeName '->' Expr10 ')' { Language.Abs.ELambda $2 $4 $6 }
+      | Expr9 '(' ListExpr ')' { Language.Abs.EFunCall $1 $3 }
+      | Expr10 { $1 }
 ListExpr :: { [Expr] }
 ListExpr : {- empty -} { [] }
          | Expr { (:[]) $1 }
          | Expr ',' ListExpr { (:) $1 $3 }
+Expr4 :: { Expr }
+Expr4 : '[' ListExpr ']' { Language.Abs.EList $2 }
+      | Expr4 '::' Expr5 { Language.Abs.ECons $1 $3 }
+      | Expr5 { $1 }
+Expr3 :: { Expr }
+Expr3 : 'if' Expr3 'then' Expr3 'else' Expr3 { Language.Abs.EIfte $2 $4 $6 }
+      | Expr4 { $1 }
+Expr1 :: { Expr }
+Expr1 : Stmt ';' Expr2 { Language.Abs.ESemicolon $1 $3 }
+      | Expr2 { $1 }
 Stmt :: { Stmt }
 Stmt : 'val' Ident '=' Expr { Language.Abs.SDeclVar $2 $4 }
      | 'fun' Ident '(' ListIdent ')' '{' Expr '}' { Language.Abs.SDeclFun $2 $4 $7 }
@@ -118,10 +138,15 @@ ListIdent : {- empty -} { [] }
           | Ident { (:[]) $1 }
           | Ident ',' ListIdent { (:) $1 $3 }
 MatchClause :: { MatchClause }
-MatchClause : Expr '~>' Expr { Language.Abs.MMatchClause $1 $3 }
+MatchClause : 'as' Expr1 '~>' Expr2 { Language.Abs.MMatchClause $2 $4 }
+Expr :: { Expr }
+Expr : 'match' Expr1 ListMatchClause { Language.Abs.EMatch $2 (reverse $3) }
+     | Expr1 { $1 }
 ListMatchClause :: { [MatchClause] }
 ListMatchClause : {- empty -} { [] }
                 | ListMatchClause MatchClause { flip (:) $1 $2 }
+Expr8 :: { Expr }
+Expr8 : Expr9 { $1 }
 {
 
 returnM :: a -> Err a

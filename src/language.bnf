@@ -1,42 +1,46 @@
-EAdd. Expr  ::= Expr  "+" Expr1 ;
-ESub. Expr  ::= Expr  "-" Expr1 ;
-EMul. Expr1 ::= Expr1 "*" Expr2 ;
-EDiv. Expr1 ::= Expr1 "/" Expr2 ;
+TSimpleTypeName. TypeName ::= Ident ;
+TPolymorphicTypeName. TypeName ::= Ident "<" [TypeName] ">" ;
+separator TypeName "," ;
 
-EEq. Expr ::= Expr "==" Expr1 ;
-ENotEq. Expr ::= Expr "!=" Expr1 ;
-ELt. Expr ::= Expr "<" Expr1 ;
-EGt. Expr ::= Expr ">" Expr1 ;
-ELtEq. Expr ::= Expr "<=" Expr1 ;
-EGtEq. Expr ::= Expr ">=" Expr1 ;
+EAdd. Expr6  ::= Expr6  "+" Expr7 ;
+ESub. Expr6  ::= Expr6  "-" Expr7 ;
+EMul. Expr7 ::= Expr7 "*" Expr8 ;
+EDiv. Expr7 ::= Expr7 "/" Expr8 ;
 
-EInt. Expr2 ::= Integer ;
+EEq. Expr5 ::= Expr5 "==" Expr6 ;
+ENotEq. Expr5 ::= Expr5 "!=" Expr6 ;
+ELt. Expr5 ::= Expr5 "<" Expr6 ;
+EGt. Expr5 ::= Expr5 ">" Expr6 ;
+ELtEq. Expr5 ::= Expr5 "<=" Expr6 ;
+EGtEq. Expr5 ::= Expr5 ">=" Expr6 ;
 
-EOr. Expr  ::= Expr  "or" Expr1 ;
-EAnd. Expr  ::= Expr  "and" Expr1 ;
-ENot. Expr1 ::= "not" Expr2 ;
-ETrue. Expr2 ::= "true" ;
-EFalse. Expr2 ::= "false" ;
+EInt. Expr10 ::= Integer ;
 
-ELambda. Expr ::= Ident "->" Expr1;
+EOr. Expr2  ::= Expr2  "or" Expr5 ;
+EAnd. Expr2  ::= Expr2 "and" Expr5 ;
+ENot. Expr7 ::= "not" Expr8 ;
+ETrue. Expr10 ::= "true" ;
+EFalse. Expr10 ::= "false" ;
 
-EVar. Expr2 ::= Ident ;
-EFunCall. Expr2 ::= Expr "(" [Expr] ")" ;
+ELambda. Expr9 ::= "(" Ident ":" TypeName "->" Expr10 ")";
+
+EVar. Expr10 ::= Ident ;
+EFunCall. Expr9 ::= Expr9 "(" [Expr] ")" ;
 separator Expr "," ;
 
-EList. Expr ::= "[" [Expr] "]" ;
-ECons. Expr ::= Expr ":" Expr ;
-ENil. Expr ::= "nil" ;
+EList. Expr4 ::= "[" [Expr] "]" ;
+ECons. Expr4 ::= Expr4 "::" Expr5 ;
+ENil. Expr5 ::= "nil" ;
 
-EIfte. Expr ::= "if" Expr "then" Expr "else" Expr ;
+EIfte. Expr3 ::= "if" Expr3 "then" Expr3 "else" Expr3 ;
 
-ESemicolon. Expr ::= Stmt ";" Expr ;
+ESemicolon. Expr1 ::= Stmt ";" Expr2 ; -- to zmienic na najnizszy priorytet. Wszystko podbić.
 SDeclVar. Stmt ::= "val" Ident "=" Expr ;
 SDeclFun. Stmt ::= "fun" Ident "(" [Ident] ")" "{" Expr "}" ;
 separator Ident "," ;
 
-MMatchClause. MatchClause ::= Expr "~>" Expr ; 
-EMatch. Expr ::= "match" Expr1 "as" [MatchClause] ;
+MMatchClause. MatchClause ::= "as" Expr1 "~>" Expr2 ; 
+EMatch. Expr ::= "match" Expr1 [MatchClause] ;
 separator MatchClause "" ;
 
-coercions Expr 2 ;
+coercions Expr 10 ;
