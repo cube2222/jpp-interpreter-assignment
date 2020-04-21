@@ -22,7 +22,10 @@ ENot. Expr7 ::= "not" Expr8 ;
 ETrue. Expr10 ::= "true" ;
 EFalse. Expr10 ::= "false" ;
 
-ELambda. Expr9 ::= "(" Ident ":" TypeName "->" Expr10 ")";
+AFunctionArgument. FunctionParameter ::= Ident ":" TypeName ;
+separator FunctionParameter "," ;
+
+ELambda. Expr9 ::= "(" FunctionParameter "->" Expr10 ")";
 
 EVar. Expr10 ::= Ident ;
 EFunCall. Expr9 ::= Expr9 "(" [Expr] ")" ;
@@ -36,7 +39,7 @@ EIfte. Expr3 ::= "if" Expr3 "then" Expr3 "else" Expr3 ;
 
 ESemicolon. Expr1 ::= Stmt ";" Expr2 ; -- to zmienic na najnizszy priorytet. Wszystko podbić.
 SDeclVar. Stmt ::= "val" Ident "=" Expr ;
-SDeclFun. Stmt ::= "fun" Ident "(" [Ident] ")" "{" Expr "}" ;
+SDeclFun. Stmt ::= "fun" Ident "(" [FunctionParameter] ")" "{" Expr "}" ;
 separator Ident "," ;
 
 MMatchClause. MatchClause ::= "as" Expr1 "~>" Expr2 ; 

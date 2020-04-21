@@ -12,9 +12,21 @@ import Language.Abs
 import Language.ErrM
 import Language.Print
 
-type TCM = ReaderT Env (ExceptT String Identity)
-
 data Type = TInteger | TBool | TList Type | TNil | TFun Type Type deriving (Eq, Show)
+
+data TEnv = TEnv { variable_types :: Map.Map Ident Type } deriving (Show)
+type TCM = ReaderT TEnv (ExceptT String Identity)
+
+startTEnv = TEnv { variable_types = Map.empty }
+withVariableType :: Ident -> Type -> TEnv -> TEnv
+withVariableType ident t env = env { variable_types = Map.insert ident t (variable_types env) }
+
+getVariableType :: Ident -> TCM Type
+getVariableType ident@(Ident str) = (Map.lookup) <$> (pure ident) <*> (asks variable_types) >>= 
+  (\result -> case result of 
+    Just t -> pure t
+    Nothing -> throwError $ showString "unknown variable used: " . showString str $ ""
+    )
 
 getType :: TypeName -> TCM Type -- TODO: add custom type handling
 getType typeName = case typeName of
@@ -55,7 +67,6 @@ getExprType x = case x of
   ESub expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
   EMul expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
   EDiv expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
-  -- TODO: Add recursive list checking
   EEq expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\_ -> (assertType expr1 [TInteger, TBool])) >>= (\_ -> pure TInteger)
   ENotEq expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\_ -> (assertType expr1 [TInteger, TBool])) >>= (\_ -> pure TInteger)
   ELt expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
@@ -65,7 +76,7 @@ getExprType x = case x of
   EInt n -> pure TInteger
   ETrue -> pure TBool
   EFalse -> pure TBool
-  EVar ident -> undefined
+  EVar ident -> getVariableType ident
   ECons x xs -> (getExprType xs) >>=
     (\tailType -> case tailType of
       TList t -> (getExprType x) >>= (\headType -> if headType == t 
@@ -105,13 +116,30 @@ getExprType x = case x of
       shows (printTree elseExpr) . showString " of type " . shows elseType $ 
       "")
     return thenType
-  ESemicolon stmt expr -> undefined
+  ESemicolon stmt expr -> (typecheckStmt stmt) >>= ((flip local) (getExprType expr))
   EFunCall funExpr argExprs -> undefined
-  ELambda _ argTypeName expr -> do -- TODO: add argument in lambda as proper type
+  ELambda (AFunctionArgument argName argTypeName) expr -> do
     argType <- getType argTypeName
-    exprType <- getExprType expr
+    exprType <- local (withVariableType argName argType) (getExprType expr)
     return (TFun argType exprType)
   EMatch expr clauses -> undefined
+
+typecheckStmt :: Stmt -> TCM (TEnv -> TEnv)
+typecheckStmt stmt = case stmt of
+  SDeclVar ident expr -> (withVariableType ident) <$> (getExprType expr)
+  SDeclFun fName argNames expr -> (\t -> withVariableType fName t) <$>
+                                    ((map (\(AFunctionArgument name t) -> getType t) argNames) 
+                                      (local (\tenv -> foldl (\tenv -> (\(AFunctionArgument argName argType) -> (getType argType) >>= (\argType -> (withVariable argName argType) <$> TEnv))) (pure tenv) argNames) (getExprType expr)) >>=
+                                        (\t -> foldr (\(AFunctionArgument name argType) -> (\returnType -> TFun argType returnType)) argNames t))
+                                      
+  -- 
+    -- let
+    --   makeFun env = 
+    --     let
+    --       recEnv = withVariable fName recFun env
+    --       recFun = Fun (foldr (\argName -> (\expr -> (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) expr))) expr argNames) recEnv -- TODO: Fix this lambda type
+    --     in recFun
+    -- in (withVariable fName) <$> (makeFun <$> ask)
 
 -- Runtime
 
@@ -170,7 +198,7 @@ getVariable ident@(Ident str) = (Map.lookup) <$> (pure ident) <*> (asks variable
     )
 
 getFunction :: Value -> (Ident, Expr, Env)
-getFunction (Fun (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) bodyExpr) env) = (argName, bodyExpr, env) -- TODO: Fix this lambda type
+getFunction (Fun (ELambda (AFunctionArgument argName (TSimpleTypeName (Ident "TODOFixMe"))) bodyExpr) env) = (argName, bodyExpr, env) -- TODO: Fix this lambda type
 
 data CaptureExpression = CaptureInteger Integer | CaptureBool Bool | CaptureCons CaptureExpression CaptureExpression  | CaptureList [CaptureExpression] | CaptureVariable Ident
 
@@ -185,7 +213,7 @@ interpretMatchExpression x = case x of
   EList exprs -> CaptureList <$> (foldr (\expr -> (\list -> list >>= (\list -> (\expr -> expr : list) <$> (interpretMatchExpression expr)))) (pure []) exprs)
   _ -> throwError "invalid match expression"
 
--- TODO This has to return ExceptT on duplicate identificator
+-- TODO This has to return ExceptT on duplicate identifier
 match :: CaptureExpression -> Value -> Maybe [(Ident, Value)]
 match pattern value = case (pattern, value) of
   (CaptureVariable ident, value) -> Just [(ident, value)]
@@ -229,7 +257,7 @@ interpretExpr x = case x of
   ESemicolon stmt expr -> (interpretStmt stmt) >>= ((flip local) (interpretExpr expr))
   EFunCall funExpr argExprs ->
     let 
-      handleSingleLevel argExpr (Fun (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) bodyExpr) env) =   -- TODO: Fix this lambda type
+      handleSingleLevel argExpr (Fun (ELambda (AFunctionArgument argName (TSimpleTypeName (Ident "TODOFixMe"))) bodyExpr) env) =   -- TODO: Fix this lambda type
         let 
           funcParams = do
             argVal <- (interpretExpr argExpr)
@@ -237,7 +265,7 @@ interpretExpr x = case x of
           callFunc (argName, argVal, bodyExpr, env) = local (\ _ -> withVariable argName argVal env) (interpretExpr bodyExpr)
         in funcParams >>= callFunc
     in foldl (\f -> (\expr -> (f >>= handleSingleLevel expr))) (interpretExpr funExpr) argExprs
-  ELambda argName _ expr -> Fun (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) expr) <$> ask -- TODO: Fix this lambda type
+  ELambda (AFunctionArgument argName _) expr -> Fun (ELambda (AFunctionArgument argName (TSimpleTypeName (Ident "TODOFixMe"))) expr) <$> ask -- TODO: Fix this lambda type
   EMatch expr clauses ->
     let 
       combine :: Value -> MatchClause -> Maybe ([(Ident, Value)], Expr) -> IM (Maybe ([(Ident, Value)], Expr))
@@ -261,7 +289,7 @@ interpretStmt stmt = case stmt of
       makeFun env = 
         let
           recEnv = withVariable fName recFun env
-          recFun = Fun (foldr (\argName -> (\expr -> (ELambda argName (TSimpleTypeName (Ident "TODOFixMe")) expr))) expr argNames) recEnv -- TODO: Fix this lambda type
+          recFun = Fun (foldr (\(AFunctionArgument argName _) -> (\expr -> (ELambda (AFunctionArgument argName (TSimpleTypeName (Ident "TODOFixMe"))) expr))) expr argNames) recEnv -- TODO: Fix this lambda type
         in recFun
     in (withVariable fName) <$> (makeFun <$> ask)
 
@@ -273,12 +301,12 @@ calc s =
     let parserOut = pExpr (myLexer s)
     in case parserOut of
       Bad err -> show err
-      Ok expr -> show expr
-        -- let
-        --   outType = runIdentity (runExceptT (runReaderT (getExprType expr) startEnv))
-        -- in case outType of
-        --   Left e -> "Type Error: " ++ e
-        --   Right typeName -> show typeName
+      Ok expr ->
+        let
+          outType = runIdentity (runExceptT (runReaderT (getExprType expr) startTEnv))
+        in case outType of
+          Left e -> "Type Error: " ++ e
+          Right typeName -> show typeName
             --let 
             --  out = runIdentity (runExceptT (runReaderT (interpretExpr e) startEnv))
             --in case out of
