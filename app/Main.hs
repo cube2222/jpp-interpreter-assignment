@@ -137,7 +137,34 @@ getExprType x = case x of
     argType <- getType argTypeName
     exprType <- local (withVariableType argName argType) (getExprType expr)
     return (TFun argType exprType)
-  EMatch expr clauses -> undefined
+  EMatch expr ((MMatchClause _ x):ys) -> 
+    let 
+      combine :: Value -> MatchClause -> Maybe ([(Ident, Value)], Expr) -> IM (Maybe ([(Ident, Value)], Expr))
+      combine value (MMatchClause capture body) acc = case acc of
+        Just g -> pure . Just $ g
+        Nothing -> (liftM (\captured -> (captured, body))) <$> ((\captureExpr -> match captureExpr value) <$> (interpretMatchExpression capture))
+      handleClauses :: [MatchClause] -> Value -> IM (Maybe ([(Ident, Value)], Expr))
+      handleClauses clauses value =
+        foldl (\acc -> (\clause -> acc >>= (\acc -> combine value clause acc))) (pure Nothing) clauses
+      capture = (interpretExpr expr) >>= (handleClauses clauses) 
+      handleMatch match = case match of
+        Just (captured, body) -> local (\env -> foldl (\env -> (\(name, value) -> withVariable name value env)) env captured) (interpretExpr body)
+        Nothing -> throwError "Unexhaustive match."
+    in capture >>= handleMatch
+    -- let 
+    -- checkUniformType headType xs =
+    --   foldl (\acc -> (\curExpr -> do
+    --     accType <- acc
+    --     curType <- getExprType curExpr
+    --     when (accType /= curType) (throwError $ 
+    --       showString "found expressions of differing types in match clause expressions: " . 
+    --       shows (printTree x) . showString " of type " . shows accType .
+    --       showString " and " . 
+    --       shows (printTree curExpr) . showString " of type " . shows curType $ 
+    --       "")
+    --     return accType
+    --   )) headType xs
+    -- in checkUniformType (getExprType x) (map (\(MMatchClause _ y) -> y) ys)
 
 typecheckStmt :: Stmt -> TCM (TEnv -> TEnv)
 typecheckStmt stmt = case stmt of
@@ -244,6 +271,17 @@ match pattern value = case (pattern, value) of
   (CaptureList (x:xs), List (y:ys)) -> (match x y) >>= (\list -> (\rest -> concat [list, rest] ) <$> (match (CaptureList xs) (List ys)))
   (CaptureList [], List []) -> Just []
   _ -> Nothing
+
+-- TODO: This has to return ExceptT on duplicate identifier
+matchTypes :: CaptureExpression -> Type -> TCM (Maybe [(Ident, Type)])
+matchTypes pattern t = case (pattern, t) of
+  (CaptureVariable ident, t) -> pure . Just $ [(ident, t)]
+  (CaptureInteger x, TInteger) -> pure . Just $ []
+  (CaptureBool x, TBool) -> pure . Just $ []
+  (CaptureCons x xs, TList elementType) -> (matchTypes x elementType) >> (matchTypes xs (TList elementType))
+  (CaptureList (x:xs), TList elementType) -> (matchTypes x elementType) >> (matchTypes (CaptureList xs) (TList elementType))
+  (CaptureList [], TList elementType) -> pure . Just $ []
+  _ -> pure Nothing -- TODO: Error
 
 binaryOp op expr0 expr1 = (interpretExpr expr0) >>= (\expr0 -> (interpretExpr expr1) >>= (\expr1 -> op expr0 expr1))
 
