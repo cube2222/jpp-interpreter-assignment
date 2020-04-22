@@ -117,7 +117,22 @@ getExprType x = case x of
       "")
     return thenType
   ESemicolon stmt expr -> (typecheckStmt stmt) >>= ((flip local) (getExprType expr))
-  EFunCall funExpr argExprs -> undefined
+  EFunCall funExpr argExprs -> do
+    funExprType <- getExprType funExpr
+    resultType <- foldl (\t -> (\arg -> do
+      funType <- t
+      newFunType <- case funType of
+                      TFun inputType outputType -> do
+                        assertType arg [inputType]
+                        return outputType
+                      _ -> (throwError $
+                          showString "trying to call expression of non-function type " .
+                          shows funType $
+                          ""
+                        )
+      return newFunType
+      )) (pure funExprType) argExprs
+    return resultType
   ELambda (AFunctionArgument argName argTypeName) expr -> do
     argType <- getType argTypeName
     exprType <- local (withVariableType argName argType) (getExprType expr)
@@ -127,10 +142,16 @@ getExprType x = case x of
 typecheckStmt :: Stmt -> TCM (TEnv -> TEnv)
 typecheckStmt stmt = case stmt of
   SDeclVar ident expr -> (withVariableType ident) <$> (getExprType expr)
-  SDeclFun fName argNames expr -> (\t -> withVariableType fName t) <$>
-                                    ((map (\(AFunctionArgument name t) -> getType t) argNames) 
-                                      (local (\tenv -> foldl (\tenv -> (\(AFunctionArgument argName argType) -> (getType argType) >>= (\argType -> (withVariable argName argType) <$> TEnv))) (pure tenv) argNames) (getExprType expr)) >>=
-                                        (\t -> foldr (\(AFunctionArgument name argType) -> (\returnType -> TFun argType returnType)) argNames t))
+  SDeclFun fName args expr -> (\t -> withVariableType fName t) <$>
+                                    do
+                                      argsParsed <- foldr (\(AFunctionArgument name argType) -> (\argsParsed -> do
+                                        argsParsed <- argsParsed
+                                        argType <- getType argType
+                                        return ((name, argType) : argsParsed)
+                                        )) (pure []) args
+                                      bodyType <- local (\tenv -> (foldl (\tenv -> (\(argName, argType) -> withVariableType argName argType tenv)) tenv argsParsed)) (getExprType expr)
+                                      functionType <- pure (foldr (\(argName, argType) -> (\bodyType -> TFun argType bodyType)) bodyType argsParsed)
+                                      return functionType
                                       
   -- 
     -- let
