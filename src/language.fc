@@ -25,7 +25,7 @@ EFalse. Expr10 ::= "false" ;
 AFunctionArgument. FunctionParameter ::= Ident ":" TypeName ;
 separator FunctionParameter "," ;
 
-ELambda. Expr9 ::= "(" FunctionParameter "->" Expr10 ")";
+ELambda. Expr9 ::= "(" FunctionParameter "->" Expr ")";
 
 EVar. Expr10 ::= Ident ;
 EFunCall. Expr9 ::= Expr9 "(" [Expr] ")" ;
@@ -37,7 +37,7 @@ ENil. Expr5 ::= "nil" ;
 
 EIfte. Expr3 ::= "if" Expr3 "then" Expr3 "else" Expr3 ;
 
-ESemicolon. Expr1 ::= Stmt ";" Expr2 ; -- to zmienic na najnizszy priorytet. Wszystko podbić.
+ESemicolon. Expr1 ::= Stmt ";" Expr1 ; -- to zmienic na najnizszy priorytet. Wszystko podbi?.
 SDeclVar. Stmt ::= "val" Ident "=" Expr ;
 SDeclFun. Stmt ::= "fun" Ident "(" [FunctionParameter] ")" "{" Expr "}" ;
 separator Ident "," ;
