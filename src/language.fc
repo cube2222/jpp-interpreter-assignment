@@ -31,8 +31,8 @@ EVar. Expr10 ::= Ident ;
 EFunCall. Expr9 ::= Expr9 "(" [Expr] ")" ;
 separator Expr "," ;
 
-EList. Expr4 ::= "[" [Expr] "]" ;
-ECons. Expr4 ::= Expr4 "::" Expr5 ;
+ECons. Expr4 ::= Expr5 "::" Expr4 ;
+EList. Expr5 ::= "[" [Expr] "]" ;
 ENil. Expr5 ::= "nil" ;
 
 EIfte. Expr3 ::= "if" Expr3 "then" Expr3 "else" Expr3 ;

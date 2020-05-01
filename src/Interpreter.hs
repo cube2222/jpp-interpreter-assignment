@@ -21,22 +21,43 @@ instance Show Type where
   show TNil = "[]"
   show (TFun inType outType) = "Fun<" ++ (show inType) ++ ", " ++ (show outType) ++ ">"
 
-data TEnv = TEnv { variable_types :: Map.Map Ident Type } deriving (Show)
-type TCM = ReaderT TEnv (ExceptT String Identity)
-
 type TCExpr = Expr (Maybe (Int, Int))
 type TCStmt = Stmt (Maybe (Int, Int))
 type TCTypeName = TypeName (Maybe (Int, Int))
+type TCMatchClause = MatchClause (Maybe (Int, Int))
+
+data TEnv = TEnv { variable_types :: Map.Map Ident Type } deriving (Show)
+type TCM = ReaderT TEnv (ExceptT TCError Identity)
+
+data TCError = TCUnknownVariable Ident | 
+              TCUnknownSimpleType Ident | 
+              TCUnknownPolymorphicType Ident | 
+              TCUnexpectedPolymorphicTypeArgCount Int Int TCTypeName | 
+              TCInvalidExpressionType TCExpr [Type] Type |
+              TCInvalidMatchExpression TCExpr |
+              TCImpossibleMatchClause TCMatchClause TCExpr |
+              TCNonFunctionCall TCExpr Type
+              deriving (Eq)
+
+instance Show TCError where
+  show (TCUnknownVariable (Ident str)) = "unknown variable used: " ++ str
+  show (TCUnknownSimpleType (Ident str)) = "unknown simple type name: " ++ str
+  show (TCUnknownPolymorphicType (Ident str)) = "unknown polymorphic type name: " ++ str
+  show (TCUnexpectedPolymorphicTypeArgCount want actual typeName) = "exactly " ++ (show want) ++ " type argument expected for list, got " ++ (show actual) ++ ": " ++ (show (printTree typeName)) 
+  show (TCInvalidExpressionType expr want actual) = "expression " ++ (show (printTree expr)) ++ " expected to be one of types: '" ++ (show want) ++ "' but is of type: '" ++ (show actual) ++ "'"
+  show (TCInvalidMatchExpression expr) = "invalid match expression: " ++ (show (printTree expr)) 
+  show (TCImpossibleMatchClause matchClause expr) = "impossible match clause " ++ (show (printTree matchClause)) ++ " in match expression " ++ (show (printTree expr))
+  show (TCNonFunctionCall expr t) = "trying to call expression of non-function type " ++ (show t) ++ ": " ++ (show (printTree expr))
 
 startTEnv = TEnv { variable_types = Map.empty }
 withVariableType :: Ident -> Type -> TEnv -> TEnv
 withVariableType ident t env = env { variable_types = Map.insert ident t (variable_types env) }
 
 getVariableType :: Ident -> TCM Type
-getVariableType ident@(Ident str) = (Map.lookup) <$> (pure ident) <*> (asks variable_types) >>= 
+getVariableType ident = (Map.lookup) <$> (pure ident) <*> (asks variable_types) >>= 
   (\result -> case result of 
     Just t -> pure t
-    Nothing -> throwError $ showString "unknown variable used: " . showString str $ ""
+    Nothing -> throwError (TCUnknownVariable ident)
     )
 
 getType :: TCTypeName -> TCM Type -- TODO: add custom type handling
@@ -44,37 +65,25 @@ getType typeName = case typeName of
   TSimpleTypeName _ (Ident name) -> case name of
     "Int" -> pure TInteger
     "Bool" -> pure TBool
-    _ -> (throwError $
-      showString "unknown simple type name: " .
-      showString name $
-      "")
+    _ -> (throwError (TCUnknownSimpleType (Ident name)))
   TPolymorphicTypeName _ (Ident name) params -> case name of
     "List" -> do
-      when ((length params) /= 1) (throwError $
-        showString "exactly 1 type argument expected for list, got " .
-        shows (length params) . 
-        showString ": " .
-        shows (printTree typeName) $
-        "")
+      when ((length params) /= 1) (throwError (TCUnexpectedPolymorphicTypeArgCount 1 (length params) typeName))
       elementType <- getType (head params)
       return (TList elementType)
     "Fun" -> do
-      when ((length params) /= 2) (throwError $
-        showString "exactly 2 type arguments expected for list, got " .
-        shows (length params) . 
-        showString ": " .
-        shows (printTree typeName) $
-        "")
+      when ((length params) /= 2) (throwError (TCUnexpectedPolymorphicTypeArgCount 2 (length params) typeName))
       let [input, output] = params
       inputType <- getType input
       outputType <- getType output
       return (TFun inputType outputType)
+    _ -> (throwError (TCUnknownPolymorphicType (Ident name)))
     
 
 assertType :: TCExpr -> [Type] -> TCM Type
 assertType expr expectedTypes = (getExprType expr) >>= 
     (\actualType -> if not (elem actualType expectedTypes) 
-                    then throwError $ showString "expression " . shows (printTree expr) . showString " expected to be one of types: '" . shows expectedTypes . showString "' but is of type: '" . shows actualType $ "'" 
+                    then throwError (TCInvalidExpressionType expr expectedTypes actualType) 
                     else pure actualType)
 
 getExprType :: TCExpr -> TCM Type
@@ -83,8 +92,8 @@ getExprType x = case x of
   ESub _ expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
   EMul _ expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
   EDiv _ expr0 expr1  -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
-  EEq _ expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\_ -> (assertType expr1 [TInteger, TBool])) >>= (\_ -> pure TInteger)
-  ENotEq _ expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\_ -> (assertType expr1 [TInteger, TBool])) >>= (\_ -> pure TInteger)
+  EEq _ expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\leftType -> (assertType expr1 [leftType])) >>= (\rightType -> pure rightType) -- TODO: Fix eq typecheck
+  ENotEq _ expr0 expr1 -> (assertType expr0 [TInteger, TBool]) >>= (\leftType -> (assertType expr1 [leftType])) >>= (\rightType -> pure rightType)
   ELt _ expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
   EGt _ expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
   ELtEq _ expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TInteger)
@@ -93,44 +102,25 @@ getExprType x = case x of
   ETrue _ -> pure TBool
   EFalse _ -> pure TBool
   EVar _ ident -> getVariableType ident
-  ECons _ x xs -> (getExprType xs) >>=
-    (\tailType -> case tailType of
-      TList t -> (getExprType x) >>= (\headType -> if headType == t 
-                                                   then pure . TList $ headType 
-                                                   else throwError $ showString "tail of cons has different type than head, have: " . shows headType . showString " and " . shows t $ "")
-      TNil -> TList <$> getExprType x
-      _ -> throwError $ showString "tail of cons has to be of List type, is: " . shows tailType $ ""
-    )
+  ECons _ x xs -> do
+    headType <- getExprType x
+    tailType <- assertType xs [(TList headType), TNil]
+    return (TList headType)
   ENil _ -> pure TNil
   EList _ [] -> pure TNil
   EList _ (x:xs) -> let 
     checkUniformType headType xs =
       foldl (\acc -> (\curExpr -> do
         accType <- acc
-        curType <- getExprType curExpr
-        when (accType /= curType) (throwError $ 
-          showString "found expressions of differing types in list literal: " . 
-          shows (printTree x) . showString " of type " . shows accType .
-          showString " and " . 
-          shows (printTree curExpr) . showString " of type " . shows curType $ 
-          "")
+        assertType curExpr [accType]
         return accType
       )) headType xs
     in TList <$> checkUniformType (getExprType x) xs
   EIfte _ predicateExpr thenExpr elseExpr -> do
     predicateType <- getExprType predicateExpr
-    when (predicateType /= TBool) (throwError $ 
-      showString "predicate in if expression must be boolean, is: " . 
-      shows (printTree predicateExpr) . showString " of type " . shows predicateType $
-      "")
+    assertType predicateExpr [TBool]
     thenType <- getExprType thenExpr
-    elseType <- getExprType elseExpr
-    when (thenType /= elseType) (throwError $ 
-      showString "found expressions of differing types in if-then-else branches: " . 
-      shows (printTree thenExpr) . showString " of type " . shows thenType .
-      showString " and " . 
-      shows (printTree elseExpr) . showString " of type " . shows elseType $ 
-      "")
+    assertType elseExpr [thenType]
     return thenType
   ESemicolon _ stmt expr -> (typecheckStmt stmt) >>= ((flip local) (getExprType expr))
   EFunCall _ funExpr argExprs -> do
@@ -141,13 +131,7 @@ getExprType x = case x of
                       TFun inputType outputType -> do
                         assertType arg [inputType]
                         return outputType
-                      _ -> (throwError $
-                          showString "trying to call expression of non-function type " .
-                          shows funType .
-                          showString ": " .
-                          shows (printTree x) $
-                          ""
-                        )
+                      _ -> throwError (TCNonFunctionCall x funType)
       return newFunType
       )) (pure funExprType) argExprs
     return resultType
@@ -161,28 +145,14 @@ getExprType x = case x of
             exprType <- getExprType expr
             matchExpr <- interpretTypeMatchExpression m 
             let maybeIdentTypes = matchTypes matchExpr exprType
-            when (maybeIdentTypes == Nothing) (throwError $
-              showString "impossible match clause " .
-              shows (printTree matchClause) .
-              showString " in match expression " .
-              shows (printTree x) $
-              ""
-              )
+            when (maybeIdentTypes == Nothing) (throwError (TCImpossibleMatchClause matchClause x))
             let (Just identTypes) = maybeIdentTypes
             matchClauseBodyType <- local (\tenv -> foldl (\tenv -> (\(ident, t) -> withVariableType ident t tenv)) tenv identTypes) (getExprType body)
             return matchClauseBodyType
-    in (getExprType expr) >>= (\exprType -> foldl (\acc -> (\matchClause -> do
+    in (getExprType expr) >>= (\exprType -> foldl (\acc -> (\matchClause@(MMatchClause _ _ body) -> do
           matchBodyType <- acc
           nextMatchBodyType <- checkMatchClause exprType matchClause
-          when (matchBodyType /= nextMatchBodyType) (throwError $ 
-            showString "found expressions of differing types as match expression clause bodies: " . 
-            shows (printTree y) . showString " of type " . shows matchBodyType .
-            showString " and " . 
-            shows (printTree matchClause) . showString " of type " . shows nextMatchBodyType .
-            showString " in match expression " .
-            shows (printTree x) $
-            ""
-            )
+          when (matchBodyType /= nextMatchBodyType) (throwError (TCInvalidExpressionType body [matchBodyType] nextMatchBodyType))
           return matchBodyType
           )) (checkMatchClause exprType y) ys)
 
@@ -209,7 +179,7 @@ interpretTypeMatchExpression x = case x of
   ECons _ head tail -> (liftM2 CaptureCons) (interpretTypeMatchExpression head) (interpretTypeMatchExpression tail)
   ENil _ -> pure . CaptureList $ []
   EList _ exprs -> CaptureList <$> (foldr (\expr -> (\list -> list >>= (\list -> (\expr -> expr : list) <$> (interpretTypeMatchExpression expr)))) (pure []) exprs)
-  _ -> throwError "invalid match expression"
+  _ -> throwError (TCInvalidMatchExpression x)
 
 -- TODO This has to return ExceptT on duplicate identifier
 matchTypes :: CaptureExpression -> Type -> Maybe [(Ident, Type)]
@@ -226,10 +196,21 @@ matchTypes pattern t = case (pattern, t) of
 -- Runtime
 
 -- Interpreter Expression
+data Env = Env { variables :: Map.Map Ident Value } deriving (Show)
+type IM = ReaderT Env (ExceptT IError Identity)
 type IExpr = Expr (Maybe (Int, Int))
 type IStmt = Stmt (Maybe (Int, Int))
 type IMatchClause = MatchClause (Maybe (Int, Int))
 data Value = Integer Integer | Bool Bool | List [Value] | Fun IExpr Env
+data IError = IErrUnexpected String |
+              IErrDivisionByZero |
+              IErrUnexhaustiveMatch
+              deriving (Eq)
+
+instance Show IError where
+  show (IErrUnexpected str) = "unexpected error: " ++ str
+  show IErrDivisionByZero = "division by zero"
+  show IErrUnexhaustiveMatch = "unexhaustive pattern match"
 
 instance Eq Value where
   (Integer x) == (Integer y) = x == y
@@ -244,21 +225,15 @@ instance Show Value where
   show (List values) = show values
   show (Fun funExpr _) = show (printTree funExpr)
 
-invalidArgumentsError opName v1 v2 = showString "invalid arguments to '" . showString opName . showString "': " . shows v1 . showString " and " . shows v2 $ ""
-
 add :: Value -> Value -> IM Value
 add (Integer v1) (Integer v2) = pure . Integer $ (v1 + v2)
-add v1 v2 = throwError $ invalidArgumentsError "add" v1 v2
 sub :: Value -> Value -> IM Value
 sub (Integer v1) (Integer v2) = pure . Integer $ (v1 - v2)
-sub v1 v2 = throwError $ invalidArgumentsError "sub" v1 v2
 multiply :: Value -> Value -> IM Value
 multiply (Integer v1) (Integer v2) = pure . Integer $ (v1 * v2)
-multiply v1 v2 = throwError $ invalidArgumentsError "multiply" v1 v2
 divide :: Value -> Value -> IM Value
-divide (Integer v1) (Integer 0) = throwError "division by zero"
+divide (Integer v1) (Integer 0) = throwError IErrDivisionByZero
 divide (Integer v1) (Integer v2) = pure . Integer $ (v1 `div` v2)
-divide v1 v2 = throwError $ invalidArgumentsError "divide" v1 v2
 
 eq :: Value -> Value -> IM Value
 eq (Integer v1) (Integer v2) = pure . Bool $ (v1 == v2)
@@ -266,24 +241,16 @@ eq (Bool v1) (Bool v2) = pure . Bool $ (v1 == v2)
 eq (List (v1:v1s)) (List (v2:v2s)) = eq v1 v2 >>= (\(Bool ok) -> if ok then eq (List v1s) (List v2s) else pure . Bool $ False)
 eq (List []) (List []) = pure . Bool $ True
 eq (List _) (List _) = pure . Bool $ False
-eq v1 v2 = throwError $ invalidArgumentsError "eq" v1 v2
 notEq v1 v2 = Bool . (\(Bool b) -> not b) <$> (eq v1 v2)
 
 lt :: Value -> Value -> IM Value
 lt (Integer v1) (Integer v2) = pure . Bool $ (v1 < v2)
-lt v1 v2 = throwError $ invalidArgumentsError "less than" v1 v2
 gt :: Value -> Value -> IM Value
 gt (Integer v1) (Integer v2) = pure . Bool $ (v1 > v2)
-gt v1 v2 = throwError $ invalidArgumentsError "greater than" v1 v2
 ltEq :: Value -> Value -> IM Value
 ltEq (Integer v1) (Integer v2) = pure . Bool $ (v1 <= v2)
-ltEq v1 v2 = throwError $ invalidArgumentsError "less than or equal" v1 v2
 gtEq :: Value -> Value -> IM Value
 gtEq (Integer v1) (Integer v2) = pure . Bool $ (v1 >= v2)
-gtEq v1 v2 = throwError $ invalidArgumentsError "greater than or equal" v1 v2
-
-data Env = Env { variables :: Map.Map Ident Value } deriving (Show)
-type IM = ReaderT Env (ExceptT String Identity)
 
 startEnv = Env { variables = Map.empty }
 withVariable :: Ident -> Value -> Env -> Env
@@ -293,7 +260,7 @@ getVariable :: Ident -> IM Value
 getVariable ident@(Ident str) = (Map.lookup) <$> (pure ident) <*> (asks variables) >>= 
   (\result -> case result of 
     Just value -> pure value
-    Nothing -> throwError $ showString "unknown variable used: " . showString str $ ""
+    Nothing -> throwError (IErrUnexpected $ showString "unknown variable used: " . showString str $ "")
     )
 
 getFunction :: Value -> (Ident, IExpr, Env)
@@ -310,7 +277,7 @@ interpretMatchExpression x = case x of
   ECons _ head tail -> (liftM2 CaptureCons) (interpretMatchExpression head) (interpretMatchExpression tail)
   ENil _ -> pure . CaptureList $ []
   EList _ exprs -> CaptureList <$> (foldr (\expr -> (\list -> list >>= (\list -> (\expr -> expr : list) <$> (interpretMatchExpression expr)))) (pure []) exprs)
-  _ -> throwError "invalid match expression"
+  _ -> throwError (IErrUnexpected "invalid match expression")
 
 -- TODO This has to return ExceptT on duplicate identifier
 match :: CaptureExpression -> Value -> Maybe [(Ident, Value)]
@@ -347,10 +314,7 @@ interpretExpr x = case x of
   EIfte _ predicateExpr thenExpr elseExpr ->
     let
       predicate = interpretExpr predicateExpr
-      branch = predicate >>= (\value -> case value of
-        Bool b -> pure $ if b then thenExpr else elseExpr
-        v -> throwError $ showString "invalid predicate in if expression: " . shows v $ ""
-        )
+      branch = (\(Bool b) -> if b then thenExpr else elseExpr) <$> predicate
     in
       branch >>= interpretExpr
   ESemicolon _ stmt expr -> (interpretStmt stmt) >>= ((flip local) (interpretExpr expr))
@@ -377,7 +341,7 @@ interpretExpr x = case x of
       capture = (interpretExpr expr) >>= (handleClauses clauses) 
       handleMatch match = case match of
         Just (captured, body) -> local (\env -> foldl (\env -> (\(name, value) -> withVariable name value env)) env captured) (interpretExpr body)
-        Nothing -> throwError "Unexhaustive match."
+        Nothing -> throwError IErrUnexhaustiveMatch
     in capture >>= handleMatch
 
 interpretStmt :: IStmt -> IM (Env -> Env)
@@ -392,18 +356,25 @@ interpretStmt stmt = case stmt of
         in recFun
     in (withVariable fName) <$> (makeFun <$> ask)
 
+data CalcError = CalcParserError String | CalcTCError TCError | CalcIError IError deriving (Eq)
+
+instance Show CalcError where
+  show (CalcParserError str) = "Parser Error: " ++ str
+  show (CalcTCError err) = "Type Check Error: " ++ (show err)
+  show (CalcIError err) = "Runtime Error: " ++ (show err)
+
 calc s =
   let parserOut = pExpr (myLexer s)
   in case parserOut of
-    Bad err -> Left (show err)
+    Bad err -> Left (CalcParserError (show err))
     Ok expr ->
       let
         outType = runIdentity (runExceptT (runReaderT (getExprType expr) startTEnv))
       in case outType of
-        Left e -> Left ("Type Error: " ++ e)
+        Left e -> Left (CalcTCError e)
         Right typeName ->
           let 
             out = runIdentity (runExceptT (runReaderT (interpretExpr expr) startEnv))
           in case out of
-            Left e -> Left ("Runtime Error: " ++ e)
+            Left e -> Left (CalcIError e)
             Right val -> Right val

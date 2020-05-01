@@ -2,8 +2,12 @@ module Main where
 
 import Interpreter
 
+calcStr str = case calc str of
+    Left err -> show err
+    Right val -> show val
+
 main = do
-    --interact calc
+    interact calcStr
     putStrLn ""
 
 {- | Tests
