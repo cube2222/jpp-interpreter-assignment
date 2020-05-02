@@ -12,6 +12,35 @@ import Language.Abs
 import Language.ErrM
 import Language.Print
 
+getFromInsideOfExprFunctor expr = case expr of
+  EAdd a _ _ -> a
+  ESub a _ _ -> a
+  EMul a _ _ -> a
+  EDiv a _ _ -> a
+  EEq a _ _ -> a
+  ENotEq a _ _ -> a
+  ELt a _ _ -> a
+  EGt a _ _ -> a
+  ELtEq a _ _ -> a
+  EGtEq a _ _ -> a
+  EInt a _ -> a
+  EOr a _ _ -> a
+  EAnd a _ _ -> a
+  ENot a _ -> a
+  ETrue a -> a
+  EFalse a -> a
+  ELambda a _ _ -> a
+  EVar a ident -> a
+  EFunCall a _ _ -> a
+  ECons a _ _ -> a
+  EList a _ -> a
+  ENil a -> a
+  EIfte a _ _ _ -> a
+  ESemicolon a _ _ -> a
+  EMatch a _ _ -> a
+
+getExprLine expr = let (Just (line, _)) = getFromInsideOfExprFunctor expr in line
+
 data Type = TInteger | TBool | TList Type | TNil | TFun Type Type deriving (Eq)
 
 instance Show Type where
@@ -27,7 +56,7 @@ type TCTypeName = TypeName (Maybe (Int, Int))
 type TCMatchClause = MatchClause (Maybe (Int, Int))
 
 data TEnv = TEnv { variable_types :: Map.Map Ident Type } deriving (Show)
-type TCM = ReaderT TEnv (ExceptT TCError Identity)
+type TCM = ReaderT TEnv (ExceptT (Int, TCError) Identity)
 
 data TCError = TCUnknownVariable Ident | 
               TCUnknownSimpleType Ident | 
@@ -55,37 +84,37 @@ startTEnv = TEnv { variable_types = Map.empty }
 withVariableType :: Ident -> Type -> TEnv -> TEnv
 withVariableType ident t env = env { variable_types = Map.insert ident t (variable_types env) }
 
-getVariableType :: Ident -> TCM Type
-getVariableType ident = (Map.lookup) <$> (pure ident) <*> (asks variable_types) >>= 
+getVariableType :: TCExpr -> TCM Type
+getVariableType expr@(EVar _ ident) = (Map.lookup) <$> (pure ident) <*> (asks variable_types) >>= 
   (\result -> case result of 
     Just t -> pure t
-    Nothing -> throwError (TCUnknownVariable ident)
+    Nothing -> throwError (getExprLine expr, (TCUnknownVariable ident))
     )
 
 getType :: TCTypeName -> TCM Type -- TODO: add custom type handling
 getType typeName = case typeName of
-  TSimpleTypeName _ (Ident name) -> case name of
+  TSimpleTypeName (Just (line, _)) (Ident name) -> case name of
     "Int" -> pure TInteger
     "Bool" -> pure TBool
-    _ -> (throwError (TCUnknownSimpleType (Ident name)))
-  TPolymorphicTypeName _ (Ident name) params -> case name of
+    _ -> (throwError (line, (TCUnknownSimpleType (Ident name))))
+  TPolymorphicTypeName (Just (line, _)) (Ident name) params -> case name of
     "List" -> do
-      when ((length params) /= 1) (throwError (TCUnexpectedPolymorphicTypeArgCount 1 (length params) (clearM typeName)))
+      when ((length params) /= 1) (throwError (line, (TCUnexpectedPolymorphicTypeArgCount 1 (length params) (clearM typeName))))
       elementType <- getType (head params)
       return (TList elementType)
     "Fun" -> do
-      when ((length params) /= 2) (throwError (TCUnexpectedPolymorphicTypeArgCount 2 (length params) (clearM typeName)))
+      when ((length params) /= 2) (throwError (line, (TCUnexpectedPolymorphicTypeArgCount 2 (length params) (clearM typeName))))
       let [input, output] = params
       inputType <- getType input
       outputType <- getType output
       return (TFun inputType outputType)
-    _ -> (throwError (TCUnknownPolymorphicType (Ident name)))
+    _ -> (throwError (line, (TCUnknownPolymorphicType (Ident name))))
     
 
 assertType :: TCExpr -> [Type] -> TCM Type
 assertType expr expectedTypes = (getExprType expr) >>= 
     (\actualType -> if not (elem actualType expectedTypes) 
-                    then throwError (TCInvalidExpressionType (clearM expr) expectedTypes actualType) 
+                    then throwError (getExprLine expr, TCInvalidExpressionType (clearM expr) expectedTypes actualType) 
                     else pure actualType)
 
 getExprType :: TCExpr -> TCM Type
@@ -103,7 +132,7 @@ getExprType x = case x of
   EInt _ n -> pure TInteger
   ETrue _ -> pure TBool
   EFalse _ -> pure TBool
-  EVar _ ident -> getVariableType ident
+  EVar _ ident -> getVariableType x
   ECons _ x xs -> do
     headType <- getExprType x
     tailType <- assertType xs [(TList headType), TNil]
@@ -132,7 +161,7 @@ getExprType x = case x of
                       TFun inputType outputType -> do
                         assertType arg [inputType]
                         return outputType
-                      _ -> throwError (TCNonFunctionCall (clearM x) funType)
+                      _ -> throwError (getExprLine x, TCNonFunctionCall (clearM x) funType)
       return newFunType
       )) (pure funExprType) argExprs
     return resultType
@@ -146,14 +175,14 @@ getExprType x = case x of
             exprType <- getExprType expr
             matchExpr <- interpretTypeMatchExpression m 
             let maybeIdentTypes = matchTypes matchExpr exprType
-            when (maybeIdentTypes == Nothing) (throwError (TCImpossibleMatchClause (clearM matchClause) (clearM x)))
+            when (maybeIdentTypes == Nothing) (throwError (getExprLine x, (TCImpossibleMatchClause (clearM matchClause) (clearM x))))
             let (Just identTypes) = maybeIdentTypes
             matchClauseBodyType <- local (\tenv -> foldl (\tenv -> (\(ident, t) -> withVariableType ident t tenv)) tenv identTypes) (getExprType body)
             return matchClauseBodyType
     in (getExprType expr) >>= (\exprType -> foldl (\acc -> (\matchClause@(MMatchClause _ _ body) -> do
           matchBodyType <- acc
           nextMatchBodyType <- checkMatchClause exprType matchClause
-          when (matchBodyType /= nextMatchBodyType) (throwError (TCInvalidExpressionType (clearM body) [matchBodyType] nextMatchBodyType))
+          when (matchBodyType /= nextMatchBodyType) (throwError (getExprLine x, (TCInvalidExpressionType (clearM body) [matchBodyType] nextMatchBodyType)))
           return matchBodyType
           )) (checkMatchClause exprType y) ys)
 
@@ -170,7 +199,7 @@ typecheckStmt stmt = case stmt of
                                       returnTypeParsed <- getType returnType
                                       let functionType = foldr (\(argName, argType) -> (\bodyType -> TFun argType bodyType)) returnTypeParsed argsParsed
                                       bodyType <- local (\tenv -> (foldl (\tenv -> (\(argName, argType) -> withVariableType argName argType tenv)) (withVariableType fName functionType tenv) argsParsed)) (getExprType expr)
-                                      when (bodyType /= returnTypeParsed) (throwError (TCInvalidExpressionType (clearM expr) [returnTypeParsed] bodyType))
+                                      when (bodyType /= returnTypeParsed) (throwError (getExprLine expr, TCInvalidExpressionType (clearM expr) [returnTypeParsed] bodyType))
                                       return functionType
  
 interpretTypeMatchExpression :: TCExpr -> TCM CaptureExpression
@@ -182,7 +211,7 @@ interpretTypeMatchExpression x = case x of
   ECons _ head tail -> (liftM2 CaptureCons) (interpretTypeMatchExpression head) (interpretTypeMatchExpression tail)
   ENil _ -> pure . CaptureList $ []
   EList _ exprs -> CaptureList <$> (foldr (\expr -> (\list -> list >>= (\list -> (\expr -> expr : list) <$> (interpretTypeMatchExpression expr)))) (pure []) exprs)
-  _ -> throwError (TCInvalidMatchExpression (clearM x))
+  _ -> throwError (getExprLine x, TCInvalidMatchExpression (clearM x))
 
 -- TODO This has to return ExceptT on duplicate identifier
 matchTypes :: CaptureExpression -> Type -> Maybe [(Ident, Type)]
@@ -359,11 +388,11 @@ interpretStmt stmt = case stmt of
         in recFun
     in (withVariable fName) <$> (makeFun <$> ask)
 
-data CalcError = CalcParserError String | CalcTCError TCError | CalcIError IError deriving (Eq)
+data CalcError = CalcParserError String | CalcTCError (Int, TCError) | CalcIError IError deriving (Eq)
 
 instance Show CalcError where
   show (CalcParserError str) = "Parser Error: " ++ str
-  show (CalcTCError err) = "Type Check Error: " ++ (show err)
+  show (CalcTCError (line, err)) = "Type Check Error in line " ++ (show line) ++ ": " ++ (show err)
   show (CalcIError err) = "Runtime Error: " ++ (show err)
 
 calc s =
