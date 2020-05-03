@@ -149,5 +149,17 @@ testCases = [
     \};                                                 \n\
     \val fList = [(x: Int -> x + 2), (x: Int -> x + 3)];\n\
     \head(fList, 2)", 
-    Right (Integer 4))
+    Right (Integer 4)),
+    ("static binding", 
+    "val x = 4;                 \n\
+    \val f = (y: Int -> x + y); \n\
+    \val x = 3;                 \n\
+    \f(x)", 
+    Right (Integer 7)),
+    ("static binding", 
+    "val x = 4;                 \n\
+    \fun f(y: Int): Int {x + y}; \n\
+    \val x = 3;                 \n\
+    \f(x)", 
+    Right (Integer 7))
     ]
