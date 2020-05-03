@@ -1,3 +1,5 @@
+comment "//" ;
+
 TSimpleTypeName. TypeName ::= Ident ;
 TPolymorphicTypeName. TypeName ::= Ident "<" [TypeName] ">" ;
 separator TypeName "," ;

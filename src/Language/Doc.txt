@@ -41,7 +41,7 @@ The symbols used in language are the following:
   | { | } | ~> | 
 
 ===Comments===
-There are no single-line comments in the grammar.There are no multiple-line comments in the grammar.
+Single-line comments begin with //.There are no multiple-line comments in the grammar.
 
 ==The syntactic structure of language==
 Non-terminals are enclosed between < and >. 
