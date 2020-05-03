@@ -24,6 +24,7 @@ getFromInsideOfExprFunctor expr = case expr of
   ELtEq a _ _ -> a
   EGtEq a _ _ -> a
   EInt a _ -> a
+  ENegInt a _ -> a
   EOr a _ _ -> a
   EAnd a _ _ -> a
   ENot a _ -> a
@@ -113,9 +114,17 @@ getType typeName = case typeName of
 
 assertType :: TCExpr -> [Type] -> TCM Type
 assertType expr expectedTypes = (getExprType expr) >>= 
-    (\actualType -> if not (elem actualType expectedTypes) 
-                    then throwError (getExprLine expr, TCInvalidExpressionType (clearM expr) expectedTypes actualType) 
-                    else pure actualType)
+    (\actualType -> 
+      let
+        containsListType = (elem True) $ (\x -> 
+          case x of
+            TList _ -> True
+            _ -> False) <$> expectedTypes
+        expectedTypesWithNil = if containsListType then TNil : expectedTypes else expectedTypes
+      in
+        if not (elem actualType expectedTypesWithNil) 
+        then throwError (getExprLine expr, TCInvalidExpressionType (clearM expr) expectedTypesWithNil actualType) 
+        else pure actualType)
 
 getExprType :: TCExpr -> TCM Type
 getExprType x = case x of
@@ -130,12 +139,13 @@ getExprType x = case x of
   ELtEq _ expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TBool)
   EGtEq _ expr0 expr1 -> (assertType expr0 [TInteger]) >>= (\_ -> (assertType expr1 [TInteger])) >>= (\_ -> pure TBool)
   EInt _ n -> pure TInteger
+  ENegInt _ n -> pure TInteger
   ETrue _ -> pure TBool
   EFalse _ -> pure TBool
   EVar _ ident -> getVariableType x
   ECons _ x xs -> do
     headType <- getExprType x
-    tailType <- assertType xs [(TList headType), TNil]
+    tailType <- assertType xs [(TList headType)]
     return (TList headType)
   ENil _ -> pure TNil
   EList _ [] -> pure TNil
@@ -205,6 +215,7 @@ typecheckStmt stmt = case stmt of
 interpretTypeMatchExpression :: TCExpr -> TCM CaptureExpression
 interpretTypeMatchExpression x = case x of
   EInt _ n -> pure . CaptureInteger $ n
+  ENegInt _ n -> pure . CaptureInteger $ (-n)
   ETrue _ -> pure . CaptureBool $ True
   EFalse _ -> pure . CaptureBool $ False
   EVar _ ident -> pure . CaptureVariable $ ident
@@ -303,6 +314,7 @@ data CaptureExpression = CaptureInteger Integer | CaptureBool Bool | CaptureCons
 interpretMatchExpression :: IExpr -> IM CaptureExpression
 interpretMatchExpression x = case x of
   EInt _ n -> pure . CaptureInteger $ n
+  ENegInt _ n -> pure . CaptureInteger $ (-n)
   ETrue _ -> pure . CaptureBool $ True
   EFalse _ -> pure . CaptureBool $ False
   EVar _ ident -> pure . CaptureVariable $ ident
@@ -337,6 +349,7 @@ interpretExpr x = case x of
   ELtEq _ expr0 expr1 -> binaryOp ltEq expr0 expr1
   EGtEq _ expr0 expr1 -> binaryOp gtEq expr0 expr1
   EInt _ n -> pure . Integer $ n
+  ENegInt _ n -> pure . Integer $ (-n)
   ETrue _ -> pure . Bool $ True
   EFalse _ -> pure . Bool $ False
   EVar _ ident -> getVariable ident

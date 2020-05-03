@@ -15,6 +15,7 @@ ELtEq. Expr5 ::= Expr5 "<=" Expr6 ;
 EGtEq. Expr5 ::= Expr5 ">=" Expr6 ;
 
 EInt. Expr10 ::= Integer ;
+ENegInt. Expr10  ::= "-" Integer ;
 
 EOr. Expr2  ::= Expr2  "or" Expr5 ;
 EAnd. Expr2  ::= Expr2 "and" Expr5 ;
@@ -39,7 +40,7 @@ EIfte. Expr3 ::= "if" Expr3 "then" Expr3 "else" Expr3 ;
 
 ESemicolon. Expr1 ::= Stmt ";" Expr1 ; -- to zmienic na najnizszy priorytet. Wszystko podbi?.
 SDeclVar. Stmt ::= "val" Ident "=" Expr ;
-SDeclFun. Stmt ::= "fun" Ident "(" [FunctionParameter] ")" "{" Expr "}" ;
+SDeclFun. Stmt ::= "fun" Ident "(" [FunctionParameter] ")" ":" TypeName "{" Expr "}" ;
 separator Ident "," ;
 
 MMatchClause. MatchClause ::= "as" Expr1 "~>" Expr2 ; 

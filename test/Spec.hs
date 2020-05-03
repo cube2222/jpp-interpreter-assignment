@@ -18,6 +18,7 @@ runTestCase (name, program, want) = do
     return ()
 
 parseExpr str = let (Ok expr) = (pExpr (myLexer str)) in clearM expr
+parseMatchClause str = let (Ok clause) = (pMatchClause (myLexer str)) in clearM clause
 
 testCases = [
     ("eval 5", "5", Right (Integer 5)),
@@ -40,34 +41,113 @@ testCases = [
     ("if then else", "if false then 5 else 4", Right (Integer 4)),
     ("if then else", "if 4 < 5 then 5 else 4", Right (Integer 5)),
     ("if then else", "if 4 < 5 then (if 3 == 3 then 7 else 2) else 4", Right (Integer 7)),
-    ("if then else", "if 4 + 5 then 5 else 4", Left (CalcTCError $ TCInvalidExpressionType (parseExpr "4+5") [TBool] TInteger)),
-    ("if then else", "if true then 5 else false", Left (CalcTCError $ TCInvalidExpressionType (parseExpr "false") [TInteger] TBool)),
+    ("if then else", "if 4 + 5 then 5 else 4", Left (CalcTCError $ (1, TCInvalidExpressionType (parseExpr "4+5") [TBool] TInteger))),
+    ("if then else", "if true then 5 else false", Left (CalcTCError $ (1, TCInvalidExpressionType (parseExpr "false") [TInteger] TBool))),
     ("variables", "val x = 3; x", Right (Integer 3)),
     ("variables", "val x = 3; val y = x + 3; x + y", Right (Integer 9)),
     ("variables", "if (val x = 3; val y = x + 3; y > x) then 4 else 3", Right (Integer 4)),
-    ("variables", "if (val x = 3; val y = x + 3; y) then 4 else 3", Left (CalcTCError $ TCInvalidExpressionType (parseExpr "val x = 3; val y = x + 3; y") [TBool] TInteger)),
-    ("variables", "val x = 3; y", Left (CalcTCError $ TCUnknownVariable (Ident "y"))),
+    ("variables", "if (val x = 3; val y = x + 3; y) then 4 else 3", Left (CalcTCError $ (1, TCInvalidExpressionType (parseExpr "val x = 3; val y = x + 3; y") [TBool] TInteger))),
+    ("variables", "val x = 3; y", Left (CalcTCError $ (1, TCUnknownVariable (Ident "y")))),
     ("function", "fun test(x: Int): Int {val y = x + 2; y}; test(3)", Right (Integer 5)),
     ("function", "fun test(x: Int, y: Int): Int {val y = x + y + 2; y}; test(3,2)", Right (Integer 7)),
-    ("function", "fun test(x: Int, y: Int): Int {val y = x + y + 2; true}; test(3,2)", Left (CalcTCError $ TCInvalidExpressionType (parseExpr "val y = x + y + 2; true") [TInteger] TBool)),
+    ("function", "fun test(x: Int, y: Int): Int {val y = x + y + 2; true}; test(3,2)", Left (CalcTCError $ (1, TCInvalidExpressionType (parseExpr "val y = x + y + 2; true") [TInteger] TBool))),
     ("recursion", 
-        "fun test(x: Int, y: Int): Int {    \
-        \    if x > 0                       \
-        \    then 1 + test(x-1, y)          \
-        \    else if y > 0                  \
-        \         then 1 + test(y-1, y-1)   \
-        \         else 0                    \
-        \};                                 \
+        "fun test(x: Int, y: Int): Int {    \n\
+        \    if x > 0                       \n\
+        \    then 1 + test(x-1, y)          \n\
+        \    else if y > 0                  \n\
+        \         then 1 + test(y-1, y-1)   \n\
+        \         else 0                    \n\
+        \};                                 \n\
         \test(3,2)",
         Right (Integer 6)),
     ("recursion", 
-        "fun test(x: Int, y: Int): Int {    \
-        \    if x > 0                       \
-        \    then 1 + test(x-1, y)          \
-        \    else if test(y-1, y-1)         \
-        \         then 1                    \
-        \         else 0                    \
-        \};                                 \
+        "fun test(x: Int, y: Int): Int {    \n\
+        \    if x > 0                       \n\
+        \    then 1 + test(x-1, y)          \n\
+        \    else if test(y-1, y-1)         \n\
+        \         then 1                    \n\
+        \         else 0                    \n\
+        \};                                 \n\
         \test(3,2)",
-        Left (CalcTCError $ TCInvalidExpressionType (parseExpr "test(y-1, y-1)") [TBool] TInteger))
+        Left (CalcTCError $ (4, TCInvalidExpressionType (parseExpr "test(y-1, y-1)") [TBool] TInteger))),
+    ("anonymous functions", "val f = (x: Int -> x + 2); f(3)", Right (Integer 5)),
+    ("anonymous functions", "(x: Int -> x + 2)(3)", Right (Integer 5)),
+    ("partial application", "(x: Int -> (y: Int -> x + 2*y + 2))(3)(4)", Right (Integer 13)),
+    ("partial application", "(x: Int -> (y: Int -> x + 2*y + 2))(3, 4)", Right (Integer 13)),
+    ("partial application", "val partial = (x: Int -> (y: Int -> x + 2*y + 2))(3); partial(4)", Right (Integer 13)),
+    ("partial application", 
+    "fun test(x: Int, y: Int): Int {x + 2*y + 2}; val partial = test(3); partial(4)", 
+    Right (Integer 13)),
+    ("partial application", 
+    "fun test(x: Int, y: Int): Int {x + 2*y + 2}; test(3)(4)", 
+    Right (Integer 13)),
+    ("partial application", 
+    "fun test(x: Int, y: Int): Int {x + 2*y + 2}; test(3,4)", 
+    Right (Integer 13)),
+    ("partial application", 
+    "fun test(x: Int, y: Int): Int {x + 2*y + 2}; test(3,4,5)", 
+    Left (CalcTCError $ (1, TCNonFunctionCall (parseExpr "test(3,4,5)") TInteger))),
+    ("partial application", 
+    "fun test(x: Int, y: Int): Int {x + 2*y + 2}; test(3,true)", 
+    Left (CalcTCError $ (1, TCInvalidExpressionType (parseExpr "true") [TInteger] TBool))),
+    ("higher order functions", 
+    "fun apply2(f: Fun<Int, Int>): Int {f(2)}; apply2((x: Int -> x+2))", 
+    Right (Integer 4)),
+    ("higher order functions", 
+    "fun add(x: Int, y: Int): Int { x + 2*y };                  \n\
+    \fun apply2and2(f: Fun<Int, Fun<Int, Int>>): Int {f(2,3)};  \n\
+    \apply2and2(add)", 
+    Right (Integer 8)),
+    ("runtime error", "5/0", Left (CalcIError IErrDivisionByZero)),
+    ("pattern matching", 
+    "match [1,2,3]          \n\
+    \    as x :: xs ~> x    \n\
+    \    as [] ~> -1", 
+    Right (Integer 1)),
+    ("pattern matching", 
+    "match []               \n\
+    \    as x :: xs ~> x    \n\
+    \    as [] ~> -1", 
+    Left (CalcTCError $ (1, TCImpossibleMatchClause (parseMatchClause "as x :: xs ~> x") (parseExpr "match [] as x :: xs ~> x as [] ~> -1")))),
+    ("pattern matching", 
+    "match [1]                  \n\
+    \    as x :: y :: xs ~> x   \n\
+    \    as [] ~> -1", 
+    Left (CalcIError $ IErrUnexhaustiveMatch)),
+    ("pattern matching", 
+    "match [[1],[2,3,4],[3]]                \n\
+    \    as a :: [x,y,z] :: tail ~> x+y+z   \n\
+    \    as a ~> -1", 
+    Right (Integer 9)),
+    ("pattern matching", 
+    "match [[1],[2,3,4,4],[3]]                \n\
+    \    as a :: [x,y,z] :: tail ~> x+y+z   \n\
+    \    as a ~> -1", 
+    Right (Integer (-1))),
+    ("list syntax sugar", "[1,2,3]", Right (List [Integer 1, Integer 2, Integer 3])),
+    ("list syntax sugar", "1 :: 2 :: 3 :: nil", Right (List [Integer 1, Integer 2, Integer 3])),
+    ("list syntax sugar", "1 :: 2 :: 3 :: []", Right (List [Integer 1, Integer 2, Integer 3])),
+    ("list syntax sugar", "1 :: 2 :: [3]", Right (List [Integer 1, Integer 2, Integer 3])),
+    ("list syntax sugar", "1 :: [2, 3]", Right (List [Integer 1, Integer 2, Integer 3])),
+    ("bool list", "[true, false]", Right (List [Bool True, Bool False])),
+    ("list type error", "[1,true,3]", Left (CalcTCError $ (1, TCInvalidExpressionType (parseExpr "true") [TInteger] TBool))),
+    ("list type error", "1 :: true :: 3 :: nil", Left (CalcTCError $ (1, TCInvalidExpressionType (parseExpr "3 :: nil") [TNil, TList TBool] (TList TInteger)))),
+    ("nested list", "[[1,2], [1], []]", Right (List [List [Integer 1, Integer 2], List [Integer 1], List []])),
+    ("function list", 
+    "fun head(x: List<Fun<Int, Int>>): Fun<Int, Int> {  \n\
+    \    match x                                        \n\
+    \        as f :: fs ~> f                            \n\
+    \};                                                 \n\
+    \val fList = [(x: Int -> x + 2), (x: Int -> x + 3)];\n\
+    \head(fList)(2)", 
+    Right (Integer 4)),
+    ("function list", 
+    "fun head(x: List<Fun<Int, Int>>): Fun<Int, Int> {  \n\
+    \    match x                                        \n\
+    \        as f :: fs ~> f                            \n\
+    \};                                                 \n\
+    \val fList = [(x: Int -> x + 2), (x: Int -> x + 3)];\n\
+    \head(fList, 2)", 
+    Right (Integer 4))
     ]
