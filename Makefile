@@ -5,7 +5,7 @@ all:
 	mv dist/build/Interpreter-exe/Interpreter-exe .
 
 test:
-	cabal test -j1 --test-log="/dev/stdout"
+	cabal test -j1 --log="/dev/stdout"
 
 clean:
-	cabal clean -j1
+	cabal clean
