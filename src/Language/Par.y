@@ -8,27 +8,29 @@ import Language.ErrM
 
 }
 
-%name pTypeName TypeName
-%name pListTypeName ListTypeName
-%name pExpr6 Expr6
-%name pExpr7 Expr7
-%name pExpr5 Expr5
-%name pExpr10 Expr10
-%name pExpr2 Expr2
-%name pExpr9 Expr9
-%name pListExpr ListExpr
-%name pExpr4 Expr4
-%name pExpr3 Expr3
-%name pExpr1 Expr1
-%name pStmt Stmt
-%name pListIdent ListIdent
-%name pMatchClause MatchClause
-%name pExpr Expr
-%name pListMatchClause ListMatchClause
-%name pExpr8 Expr8
 -- no lexer declaration
 %monad { Err } { thenM } { returnM }
 %tokentype {Token}
+%name pTypeName_internal TypeName
+%name pListTypeName_internal ListTypeName
+%name pExpr6_internal Expr6
+%name pExpr7_internal Expr7
+%name pExpr5_internal Expr5
+%name pExpr10_internal Expr10
+%name pExpr2_internal Expr2
+%name pFunctionParameter_internal FunctionParameter
+%name pListFunctionParameter_internal ListFunctionParameter
+%name pExpr9_internal Expr9
+%name pListExpr_internal ListExpr
+%name pExpr4_internal Expr4
+%name pExpr3_internal Expr3
+%name pExpr1_internal Expr1
+%name pStmt_internal Stmt
+%name pListIdent_internal ListIdent
+%name pMatchClause_internal MatchClause
+%name pExpr_internal Expr
+%name pListMatchClause_internal ListMatchClause
+%name pExpr8_internal Expr8
 %token
   '!=' { PT _ (TS _ 1) }
   '(' { PT _ (TS _ 2) }
@@ -66,87 +68,277 @@ import Language.ErrM
   '{' { PT _ (TS _ 34) }
   '}' { PT _ (TS _ 35) }
   '~>' { PT _ (TS _ 36) }
-  L_ident  { PT _ (TV $$) }
-  L_integ  { PT _ (TI $$) }
+
+  L_ident {PT _ (TV _)}
+  L_integ {PT _ (TI _)}
 
 %%
 
-Ident   :: { Ident }
-Ident    : L_ident  { Ident $1 }
+Ident :: {
+  (Maybe (Int, Int), Ident)
+}
+: L_ident {
+  (Just (tokenLineCol $1), Ident (prToken $1)) 
+}
 
-Integer :: { Integer }
-Integer  : L_integ  { (read ( $1)) :: Integer }
+Integer :: {
+  (Maybe (Int, Int), Integer)
+}
+: L_integ {
+  (Just (tokenLineCol $1), read (prToken $1)) 
+}
 
-TypeName :: { TypeName }
-TypeName : Ident { Language.Abs.TSimpleTypeName $1 }
-         | Ident '<' ListTypeName '>' { Language.Abs.TPolymorphicTypeName $1 $3 }
-ListTypeName :: { [TypeName] }
-ListTypeName : {- empty -} { [] }
-             | TypeName { (:[]) $1 }
-             | TypeName ',' ListTypeName { (:) $1 $3 }
-Expr6 :: { Expr }
-Expr6 : Expr6 '+' Expr7 { Language.Abs.EAdd $1 $3 }
-      | Expr6 '-' Expr7 { Language.Abs.ESub $1 $3 }
-      | Expr7 { $1 }
-Expr7 :: { Expr }
-Expr7 : Expr7 '*' Expr8 { Language.Abs.EMul $1 $3 }
-      | Expr7 '/' Expr8 { Language.Abs.EDiv $1 $3 }
-      | 'not' Expr8 { Language.Abs.ENot $2 }
-      | Expr8 { $1 }
-Expr5 :: { Expr }
-Expr5 : Expr5 '==' Expr6 { Language.Abs.EEq $1 $3 }
-      | Expr5 '!=' Expr6 { Language.Abs.ENotEq $1 $3 }
-      | Expr5 '<' Expr6 { Language.Abs.ELt $1 $3 }
-      | Expr5 '>' Expr6 { Language.Abs.EGt $1 $3 }
-      | Expr5 '<=' Expr6 { Language.Abs.ELtEq $1 $3 }
-      | Expr5 '>=' Expr6 { Language.Abs.EGtEq $1 $3 }
-      | 'nil' { Language.Abs.ENil }
-      | Expr6 { $1 }
-Expr10 :: { Expr }
-Expr10 : Integer { Language.Abs.EInt $1 }
-       | 'true' { Language.Abs.ETrue }
-       | 'false' { Language.Abs.EFalse }
-       | Ident { Language.Abs.EVar $1 }
-       | '(' Expr ')' { $2 }
-Expr2 :: { Expr }
-Expr2 : Expr2 'or' Expr5 { Language.Abs.EOr $1 $3 }
-      | Expr2 'and' Expr5 { Language.Abs.EAnd $1 $3 }
-      | Expr3 { $1 }
-Expr9 :: { Expr }
-Expr9 : '(' Ident ':' TypeName '->' Expr10 ')' { Language.Abs.ELambda $2 $4 $6 }
-      | Expr9 '(' ListExpr ')' { Language.Abs.EFunCall $1 $3 }
-      | Expr10 { $1 }
-ListExpr :: { [Expr] }
-ListExpr : {- empty -} { [] }
-         | Expr { (:[]) $1 }
-         | Expr ',' ListExpr { (:) $1 $3 }
-Expr4 :: { Expr }
-Expr4 : '[' ListExpr ']' { Language.Abs.EList $2 }
-      | Expr4 '::' Expr5 { Language.Abs.ECons $1 $3 }
-      | Expr5 { $1 }
-Expr3 :: { Expr }
-Expr3 : 'if' Expr3 'then' Expr3 'else' Expr3 { Language.Abs.EIfte $2 $4 $6 }
-      | Expr4 { $1 }
-Expr1 :: { Expr }
-Expr1 : Stmt ';' Expr2 { Language.Abs.ESemicolon $1 $3 }
-      | Expr2 { $1 }
-Stmt :: { Stmt }
-Stmt : 'val' Ident '=' Expr { Language.Abs.SDeclVar $2 $4 }
-     | 'fun' Ident '(' ListIdent ')' '{' Expr '}' { Language.Abs.SDeclFun $2 $4 $7 }
-ListIdent :: { [Ident] }
-ListIdent : {- empty -} { [] }
-          | Ident { (:[]) $1 }
-          | Ident ',' ListIdent { (:) $1 $3 }
-MatchClause :: { MatchClause }
-MatchClause : 'as' Expr1 '~>' Expr2 { Language.Abs.MMatchClause $2 $4 }
-Expr :: { Expr }
-Expr : 'match' Expr1 ListMatchClause { Language.Abs.EMatch $2 (reverse $3) }
-     | Expr1 { $1 }
-ListMatchClause :: { [MatchClause] }
-ListMatchClause : {- empty -} { [] }
-                | ListMatchClause MatchClause { flip (:) $1 $2 }
-Expr8 :: { Expr }
-Expr8 : Expr9 { $1 }
+TypeName :: {
+  (Maybe (Int, Int), TypeName (Maybe (Int, Int)))
+}
+: Ident {
+  (fst $1, Language.Abs.TSimpleTypeName (fst $1)(snd $1)) 
+}
+| Ident '<' ListTypeName '>' {
+  (fst $1, Language.Abs.TPolymorphicTypeName (fst $1)(snd $1)(snd $3)) 
+}
+
+ListTypeName :: {
+  (Maybe (Int, Int), [TypeName (Maybe (Int, Int))]) 
+}
+: {
+  (Nothing, [])
+}
+| TypeName {
+  (fst $1, (:[]) (snd $1)) 
+}
+| TypeName ',' ListTypeName {
+  (fst $1, (:) (snd $1)(snd $3)) 
+}
+
+Expr6 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Expr6 '+' Expr7 {
+  (fst $1, Language.Abs.EAdd (fst $1)(snd $1)(snd $3)) 
+}
+| Expr6 '-' Expr7 {
+  (fst $1, Language.Abs.ESub (fst $1)(snd $1)(snd $3)) 
+}
+| Expr7 {
+  (fst $1, snd $1)
+}
+
+Expr7 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Expr7 '*' Expr8 {
+  (fst $1, Language.Abs.EMul (fst $1)(snd $1)(snd $3)) 
+}
+| Expr7 '/' Expr8 {
+  (fst $1, Language.Abs.EDiv (fst $1)(snd $1)(snd $3)) 
+}
+| 'not' Expr8 {
+  (Just (tokenLineCol $1), Language.Abs.ENot (Just (tokenLineCol $1)) (snd $2)) 
+}
+| Expr8 {
+  (fst $1, snd $1)
+}
+
+Expr5 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Expr5 '==' Expr6 {
+  (fst $1, Language.Abs.EEq (fst $1)(snd $1)(snd $3)) 
+}
+| Expr5 '!=' Expr6 {
+  (fst $1, Language.Abs.ENotEq (fst $1)(snd $1)(snd $3)) 
+}
+| Expr5 '<' Expr6 {
+  (fst $1, Language.Abs.ELt (fst $1)(snd $1)(snd $3)) 
+}
+| Expr5 '>' Expr6 {
+  (fst $1, Language.Abs.EGt (fst $1)(snd $1)(snd $3)) 
+}
+| Expr5 '<=' Expr6 {
+  (fst $1, Language.Abs.ELtEq (fst $1)(snd $1)(snd $3)) 
+}
+| Expr5 '>=' Expr6 {
+  (fst $1, Language.Abs.EGtEq (fst $1)(snd $1)(snd $3)) 
+}
+| '[' ListExpr ']' {
+  (Just (tokenLineCol $1), Language.Abs.EList (Just (tokenLineCol $1)) (snd $2)) 
+}
+| 'nil' {
+  (Just (tokenLineCol $1), Language.Abs.ENil (Just (tokenLineCol $1)))
+}
+| Expr6 {
+  (fst $1, snd $1)
+}
+
+Expr10 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Integer {
+  (fst $1, Language.Abs.EInt (fst $1)(snd $1)) 
+}
+| '-' Integer {
+  (Just (tokenLineCol $1), Language.Abs.ENegInt (Just (tokenLineCol $1)) (snd $2)) 
+}
+| 'true' {
+  (Just (tokenLineCol $1), Language.Abs.ETrue (Just (tokenLineCol $1)))
+}
+| 'false' {
+  (Just (tokenLineCol $1), Language.Abs.EFalse (Just (tokenLineCol $1)))
+}
+| Ident {
+  (fst $1, Language.Abs.EVar (fst $1)(snd $1)) 
+}
+| '(' Expr ')' {
+  (Just (tokenLineCol $1), snd $2)
+}
+
+Expr2 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Expr2 'or' Expr5 {
+  (fst $1, Language.Abs.EOr (fst $1)(snd $1)(snd $3)) 
+}
+| Expr2 'and' Expr5 {
+  (fst $1, Language.Abs.EAnd (fst $1)(snd $1)(snd $3)) 
+}
+| Expr3 {
+  (fst $1, snd $1)
+}
+
+FunctionParameter :: {
+  (Maybe (Int, Int), FunctionParameter (Maybe (Int, Int)))
+}
+: Ident ':' TypeName {
+  (fst $1, Language.Abs.AFunctionArgument (fst $1)(snd $1)(snd $3)) 
+}
+
+ListFunctionParameter :: {
+  (Maybe (Int, Int), [FunctionParameter (Maybe (Int, Int))]) 
+}
+: {
+  (Nothing, [])
+}
+| FunctionParameter {
+  (fst $1, (:[]) (snd $1)) 
+}
+| FunctionParameter ',' ListFunctionParameter {
+  (fst $1, (:) (snd $1)(snd $3)) 
+}
+
+Expr9 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: '(' FunctionParameter '->' Expr ')' {
+  (Just (tokenLineCol $1), Language.Abs.ELambda (Just (tokenLineCol $1)) (snd $2)(snd $4)) 
+}
+| Expr9 '(' ListExpr ')' {
+  (fst $1, Language.Abs.EFunCall (fst $1)(snd $1)(snd $3)) 
+}
+| Expr10 {
+  (fst $1, snd $1)
+}
+
+ListExpr :: {
+  (Maybe (Int, Int), [Expr (Maybe (Int, Int))]) 
+}
+: {
+  (Nothing, [])
+}
+| Expr {
+  (fst $1, (:[]) (snd $1)) 
+}
+| Expr ',' ListExpr {
+  (fst $1, (:) (snd $1)(snd $3)) 
+}
+
+Expr4 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Expr5 '::' Expr4 {
+  (fst $1, Language.Abs.ECons (fst $1)(snd $1)(snd $3)) 
+}
+| Expr5 {
+  (fst $1, snd $1)
+}
+
+Expr3 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: 'if' Expr3 'then' Expr3 'else' Expr3 {
+  (Just (tokenLineCol $1), Language.Abs.EIfte (Just (tokenLineCol $1)) (snd $2)(snd $4)(snd $6)) 
+}
+| Expr4 {
+  (fst $1, snd $1)
+}
+
+Expr1 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Stmt ';' Expr1 {
+  (fst $1, Language.Abs.ESemicolon (fst $1)(snd $1)(snd $3)) 
+}
+| Expr2 {
+  (fst $1, snd $1)
+}
+
+Stmt :: {
+  (Maybe (Int, Int), Stmt (Maybe (Int, Int)))
+}
+: 'val' Ident '=' Expr {
+  (Just (tokenLineCol $1), Language.Abs.SDeclVar (Just (tokenLineCol $1)) (snd $2)(snd $4)) 
+}
+| 'fun' Ident '(' ListFunctionParameter ')' ':' TypeName '{' Expr '}' {
+  (Just (tokenLineCol $1), Language.Abs.SDeclFun (Just (tokenLineCol $1)) (snd $2)(snd $4)(snd $7)(snd $9)) 
+}
+
+ListIdent :: {
+  (Maybe (Int, Int), [Ident]) 
+}
+: {
+  (Nothing, [])
+}
+| Ident {
+  (fst $1, (:[]) (snd $1)) 
+}
+| Ident ',' ListIdent {
+  (fst $1, (:) (snd $1)(snd $3)) 
+}
+
+MatchClause :: {
+  (Maybe (Int, Int), MatchClause (Maybe (Int, Int)))
+}
+: 'as' Expr1 '~>' Expr2 {
+  (Just (tokenLineCol $1), Language.Abs.MMatchClause (Just (tokenLineCol $1)) (snd $2)(snd $4)) 
+}
+
+Expr :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: 'match' Expr1 ListMatchClause {
+  (Just (tokenLineCol $1), Language.Abs.EMatch (Just (tokenLineCol $1)) (snd $2)(reverse (snd $3)))
+}
+| Expr1 {
+  (fst $1, snd $1)
+}
+
+ListMatchClause :: {
+  (Maybe (Int, Int), [MatchClause (Maybe (Int, Int))]) 
+}
+: {
+  (Nothing, [])
+}
+| ListMatchClause MatchClause {
+  (fst $1, flip (:) (snd $1)(snd $2)) 
+}
+
+Expr8 :: {
+  (Maybe (Int, Int), Expr (Maybe (Int, Int)))
+}
+: Expr9 {
+  (fst $1, snd $1)
+}
+
 {
 
 returnM :: a -> Err a
@@ -157,12 +349,33 @@ thenM = (>>=)
 
 happyError :: [Token] -> Err a
 happyError ts =
-  Bad $ "syntax error at " ++ tokenPos ts ++
+  Bad $ "syntax error at " ++ tokenPos ts ++ 
   case ts of
-    []      -> []
+    [] -> []
     [Err _] -> " due to lexer error"
-    t:_     -> " before `" ++ id(prToken t) ++ "'"
+    t:_ -> " before `" ++ id(prToken t) ++ "'"
 
 myLexer = tokens
+
+pTypeName = (>>= return . snd) . pTypeName_internal
+pListTypeName = (>>= return . snd) . pListTypeName_internal
+pExpr6 = (>>= return . snd) . pExpr6_internal
+pExpr7 = (>>= return . snd) . pExpr7_internal
+pExpr5 = (>>= return . snd) . pExpr5_internal
+pExpr10 = (>>= return . snd) . pExpr10_internal
+pExpr2 = (>>= return . snd) . pExpr2_internal
+pFunctionParameter = (>>= return . snd) . pFunctionParameter_internal
+pListFunctionParameter = (>>= return . snd) . pListFunctionParameter_internal
+pExpr9 = (>>= return . snd) . pExpr9_internal
+pListExpr = (>>= return . snd) . pListExpr_internal
+pExpr4 = (>>= return . snd) . pExpr4_internal
+pExpr3 = (>>= return . snd) . pExpr3_internal
+pExpr1 = (>>= return . snd) . pExpr1_internal
+pStmt = (>>= return . snd) . pStmt_internal
+pListIdent = (>>= return . snd) . pListIdent_internal
+pMatchClause = (>>= return . snd) . pMatchClause_internal
+pExpr = (>>= return . snd) . pExpr_internal
+pListMatchClause = (>>= return . snd) . pListMatchClause_internal
+pExpr8 = (>>= return . snd) . pExpr8_internal
 }
 

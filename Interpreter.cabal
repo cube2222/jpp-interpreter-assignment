@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2a1c2d67cd46bfd7c26825e6eca024ab56f1bfb1714938a4429c02c21990c91c
+-- hash: 21889cc3e905b38b29ed5fe83d10ba9b0774060a0d732ad8a416216c5d9c61c0
 
 name:           Interpreter
 version:        0.1.0.0
@@ -15,7 +15,6 @@ author:         Author name here
 maintainer:     example@example.com
 copyright:      2020 Author name here
 license:        BSD3
-license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
@@ -27,13 +26,13 @@ source-repository head
 
 library
   exposed-modules:
+      Interpreter
       Language.Abs
       Language.ErrM
       Language.Lex
       Language.Par
       Language.Print
       Language.Skel
-      Lib
   other-modules:
       Paths_Interpreter
   hs-source-dirs:
@@ -51,7 +50,7 @@ executable Interpreter-exe
       Paths_Interpreter
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts
   build-depends:
       Interpreter
     , array >=0.5.3.0
@@ -67,7 +66,7 @@ test-suite Interpreter-test
       Paths_Interpreter
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts
   build-depends:
       Interpreter
     , array >=0.5.3.0
