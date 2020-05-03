@@ -10,3 +10,6 @@ Język realizuje zestaw featurów na 25 punktów:
   10 (listy dowolnego typu, zagnieżdżone i listy funkcji)
   12 (statyczne wiązanie identyfikatorów)
   13 (statyczne typowanie)
+
+Testy są automatyczne i mozna je uruchomić poprzez make test.
+Testy mozna wyświetlić w pliku test/Spec.hs.
