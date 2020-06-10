@@ -13,3 +13,5 @@ Język realizuje zestaw featurów na 25 punktów:
 
 Testy są automatyczne i mozna je uruchomić poprzez make test.
 Testy mozna wyświetlić w pliku test/Spec.hs.
+
+make budujący binarke wyciąga ją z katalogu dist. Nazwy katalogów są dostosowane do wersji cabala i systemu na students. Na innym urządzeniu może być potrzeba ręcznie wyciągnąć tę binarkę z katalogu podobnego do dist-newstyle/build/x86_64-${system}/ghc-${version}/Interpreter-0.1.0.0/x/Interpreter-exe/build/Interpreter-exe
