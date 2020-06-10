@@ -11,6 +11,10 @@ Język realizuje zestaw featurów na 25 punktów:
   12 (statyczne wiązanie identyfikatorów)
   13 (statyczne typowanie)
 
+# Stack
+Na innych urządzeniach niż students można normalnie użyć stack run i stack test.
+
+# Cabal
 Testy są automatyczne i mozna je uruchomić poprzez make test.
 Testy mozna wyświetlić w pliku test/Spec.hs.
 
@@ -21,6 +25,3 @@ cabal test -j1
 i spojrzeć na plik z logiem w celu zobaczenia efektów. (listę testów wraz z sukcesem lub nie)
 
 make budujący binarke wyciąga ją z katalogu dist. Nazwy katalogów są dostosowane do wersji cabala i systemu na students. Na innym urządzeniu może być potrzeba ręcznie wyciągnąć tę binarkę z katalogu podobnego do dist-newstyle/build/x86_64-${system}/ghc-${version}/Interpreter-0.1.0.0/x/Interpreter-exe/build/Interpreter-exe
-
-# Stack
-Na innych urządzeniach niż students można normalnie użyć stack run i stack test.
