@@ -18,6 +18,6 @@ komenda test też jest nastawiona na maszynę students, na innym urządzeniu mo�
 ```
 cabal test -j1
 ```
-i spojrzeć na plik z logiem w celu zobaczenia efektów.
+i spojrzeć na plik z logiem w celu zobaczenia efektów. (listę testów wraz z sukcesem lub nie)
 
 make budujący binarke wyciąga ją z katalogu dist. Nazwy katalogów są dostosowane do wersji cabala i systemu na students. Na innym urządzeniu może być potrzeba ręcznie wyciągnąć tę binarkę z katalogu podobnego do dist-newstyle/build/x86_64-${system}/ghc-${version}/Interpreter-0.1.0.0/x/Interpreter-exe/build/Interpreter-exe
